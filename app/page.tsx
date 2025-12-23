@@ -1,4 +1,4 @@
-import CreateProfile from "@/components/CreateProfile";
+import CreateProfile from "@/components/profile/CreateProfile";
 
 export default function Home() {
   return (

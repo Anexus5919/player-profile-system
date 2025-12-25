@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, ChangeEvent, FormEvent, useEffect } from "react";
+import React, { useState, ChangeEvent, useEffect } from "react";
 import ProfileHeader from "./ProfileHeader";
 import ProfileFooter from "./ProfileFooter";
 import PersonalInfoTab from "./tabs/PersonalInfoTab";
@@ -10,22 +10,31 @@ import PreviewModal from "./modals/PreviewModal";
 import IdentityModal from "./modals/IdentityModal";
 
 // --- Shared Types ---
+// Interface for individual sport stats
+export interface SportStatsData {
+  matchesPlayed: string;
+  wins: string;
+  loss: string;
+  draws: string;
+  [key: string]: string; // Allow dynamic keys
+}
+
 export interface FormData {
   // Personal
-  fullName: string; dob: string; sport: string; contactNo: string; countryCode: string; gender: string; email: string; nationality: string; address: string;
+  fullName: string; dob: string; 
+  sports: string[]; // CHANGED: Now an array for multiple sports
+  contactNo: string; countryCode: string; gender: string; email: string; nationality: string; address: string;
   // Physical
   height: string; weight: string; dominantHand: string; disability: string; disabilityDesc: string; wingspan: string; agilityRating: string;
-  // Shared Stats
-  statsSport: string; matchesPlayed: string; wins: string; loss: string; draws: string;
-  // Sport Specific
-  aces: string; smashWinners: string; runsScored: string; wicketsTaken: string; goalsScored: string; assists: string;
+  // Stats (Nested Object: { "Cricket": { ... }, "Football": { ... } })
+  sportStats: Record<string, SportStatsData>; 
   // Bio
   bio: string;
   languages: string[];
   strengths: string[];
-  strengthDescription: string; // NEW
+  strengthDescription: string; 
   weaknesses: string[];
-  weaknessDescription: string; // NEW
+  weaknessDescription: string; 
   socialLinks: { facebook: string; instagram: string; twitter: string; linkedin: string; };
 }
 
@@ -40,15 +49,18 @@ const CreateProfile = () => {
   const [furthestStep, setFurthestStep] = useState(0); 
 
   const [formData, setFormData] = useState<FormData>({
-    fullName: "", dob: "", sport: "", contactNo: "", countryCode: "+91", gender: "", email: "", nationality: "Indian", address: "",
+    fullName: "", dob: "", 
+    sports: [], // Start empty
+    contactNo: "", countryCode: "+91", gender: "", email: "", nationality: "Indian", address: "",
     height: "", weight: "", dominantHand: "", disability: "No", disabilityDesc: "", wingspan: "", agilityRating: "",
-    statsSport: "Badminton", matchesPlayed: "", wins: "", loss: "", draws: "", aces: "", smashWinners: "", runsScored: "", wicketsTaken: "", goalsScored: "", assists: "",
+    // Nested Stats Object
+    sportStats: {}, 
     bio: "",
     languages: [],
     strengths: [],
-    strengthDescription: "", // NEW
+    strengthDescription: "", 
     weaknesses: [],
-    weaknessDescription: "", // NEW
+    weaknessDescription: "", 
     socialLinks: { facebook: "", instagram: "", twitter: "", linkedin: "" }
   });
   
@@ -73,6 +85,20 @@ const CreateProfile = () => {
   const handleArrayChange = (fieldName: keyof FormData, newArray: string[]) => {
       setFormData(prev => ({ ...prev, [fieldName]: newArray }));
   }
+
+  // --- NEW: Handle Nested Stats Update ---
+  const handleStatChange = (sport: string, field: string, value: string) => {
+      setFormData(prev => ({
+          ...prev,
+          sportStats: {
+              ...prev.sportStats,
+              [sport]: {
+                  ...(prev.sportStats[sport] || {}), // Preserve existing stats for this sport
+                  [field]: value
+              }
+          }
+      }));
+  };
 
   const handleNationalityChange = (nationality: string, code: string) => {
       setFormData(prev => ({ ...prev, nationality, countryCode: code }));
@@ -172,11 +198,11 @@ const CreateProfile = () => {
           <form onSubmit={(e) => { e.preventDefault(); alert("Profile Submitted Successfully!"); }} className="p-6 md:p-8 lg:p-10">
             {activeTab === "PERSONAL INFO" ? (
               <PersonalInfoTab 
-                formData={formData} handleChange={handleInputChange} handleUnitChange={handleUnitChange} handleNationalityChange={handleNationalityChange} units={units} bmi={bmi} profilePic={profilePic} identityFile={identityFile} onPhotoUpload={(e) => handleFile(e, 'photo')} onPhotoRemove={() => setProfilePic(null)} onIdentityUpload={(e) => handleFile(e, 'identity')} onIdentityPreview={() => setModals({ ...modals, identity: true })} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext}
+                formData={formData} handleChange={handleInputChange} handleUnitChange={handleUnitChange} handleNationalityChange={handleNationalityChange} handleArrayChange={handleArrayChange} units={units} bmi={bmi} profilePic={profilePic} identityFile={identityFile} onPhotoUpload={(e) => handleFile(e, 'photo')} onPhotoRemove={() => setProfilePic(null)} onIdentityUpload={(e) => handleFile(e, 'identity')} onIdentityPreview={() => setModals({ ...modals, identity: true })} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext}
               />
             ) : activeTab === "SPORTS STATS" ? (
               <SportsStatsTab 
-                formData={formData} handleChange={handleInputChange} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext} onPrevious={handlePrevious}
+                formData={formData} handleStatChange={handleStatChange} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext} onPrevious={handlePrevious}
               />
             ) : activeTab === "BIO" ? (
               <BioTab 

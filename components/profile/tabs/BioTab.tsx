@@ -28,14 +28,15 @@ const BioTab: React.FC<Props> = ({
 }) => {
   const [errors, setErrors] = useState<string[]>([]);
   const [hoverButton, setHoverButton] = useState(false);
-  const [showDescriptions, setShowDescriptions] = useState(false); 
+  const [showDescriptions, setShowDescriptions] = useState(true); // Default open to show required fields
 
-  // --- VALIDATION ---
+  // --- VALIDATION LOGIC ---
   useEffect(() => {
       const newErrors = [];
       if (!formData.bio.trim()) newErrors.push("Bio is required.");
       if (formData.languages.length === 0) newErrors.push("Select at least one language.");
       
+      // Mandatory Descriptions
       if (!formData.strengthDescription.trim()) newErrors.push("Strength Description is required.");
       if (!formData.weaknessDescription.trim()) newErrors.push("Weakness Description is required.");
       
@@ -85,9 +86,13 @@ const BioTab: React.FC<Props> = ({
                         </span>
                     </div>
                     <textarea 
-                        name="bio" rows={6} value={formData.bio} onChange={handleChange} maxLength={BIO_CHARACTER_LIMIT}
+                        name="bio" 
+                        rows={6} 
+                        value={formData.bio} 
+                        onChange={handleChange} 
+                        maxLength={BIO_CHARACTER_LIMIT}
                         className={`${inputBaseStyle} resize-none h-[180px]`}
-                        placeholder="Tell us about your playing style, experience, and achievements..."
+                        placeholder="Briefly describe your journey, achievements, and playing style..."
                     />
                 </div>
 
@@ -100,7 +105,9 @@ const BioTab: React.FC<Props> = ({
                                 const isSelected = formData.languages.includes(lang);
                                 return (
                                     <button
-                                        key={lang} type="button" onClick={() => toggleLanguage(lang)}
+                                        key={lang} 
+                                        type="button" 
+                                        onClick={() => toggleLanguage(lang)}
                                         className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-all flex items-center gap-1.5
                                             ${isSelected ? "bg-lime-500/20 border-lime-500 text-lime-500" : "bg-[#2C2C2C] border-gray-700 text-gray-400 hover:text-gray-200"}`}
                                     >
@@ -118,7 +125,7 @@ const BioTab: React.FC<Props> = ({
         <div>
             <h3 className={`${sectionHeaderStyle} mt-4`}>Skills Analysis</h3>
             
-            {/* Pill Inputs with Placeholders */}
+            {/* Pill Inputs */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
                 <div>
                     <label className={labelStyle}>Strengths (Press Enter)</label>
@@ -131,7 +138,7 @@ const BioTab: React.FC<Props> = ({
                         <input 
                             type="text" 
                             className="bg-transparent outline-none text-sm text-white flex-1 min-w-[100px]" 
-                            placeholder="e.g. Agility, Stamina" // Added Placeholder
+                            placeholder="e.g. Speed, Agility, Leadership" 
                             onKeyDown={(e) => handleTagInput(e, 'strengths')} 
                         />
                     </div>
@@ -148,25 +155,27 @@ const BioTab: React.FC<Props> = ({
                         <input 
                             type="text" 
                             className="bg-transparent outline-none text-sm text-white flex-1 min-w-[100px]" 
-                            placeholder="e.g. Backhand, Endurance" // Added Placeholder
+                            placeholder="e.g. Stamina, Backhand" 
                             onKeyDown={(e) => handleTagInput(e, 'weaknesses')} 
                         />
                     </div>
                 </div>
             </div>
 
-            {/* --- HIDDEN DESCRIPTION TOGGLE --- */}
+            {/* --- MANDATORY DESCRIPTIONS (ACCORDION) --- */}
             <div className="border border-gray-800 rounded-lg overflow-hidden bg-[#151515]">
                 <button 
                     type="button"
                     onClick={() => setShowDescriptions(!showDescriptions)}
                     className="w-full flex items-center justify-between p-4 text-sm font-medium text-gray-300 hover:bg-[#1f1f1f] transition-colors"
                 >
-                    <span>Want to share more about your strengths or weaknesses?</span>
+                    <div className="flex items-center gap-2">
+                        <span>Detailed Analysis (Required)</span>
+                        {!formData.strengthDescription || !formData.weaknessDescription ? <span className="text-red-500 text-[10px] uppercase font-bold bg-red-900/20 px-2 py-0.5 rounded">Incomplete</span> : <span className="text-lime-500 text-[10px] uppercase font-bold bg-lime-900/20 px-2 py-0.5 rounded">Completed</span>}
+                    </div>
                     {showDescriptions ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                 </button>
                 
-                {/* Collapsible Content */}
                 {showDescriptions && (
                     <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-gray-800 animate-in slide-in-from-top-2 duration-200">
                         <div>
@@ -198,22 +207,41 @@ const BioTab: React.FC<Props> = ({
         <div>
              <h3 className={`${sectionHeaderStyle} mt-4`}>Social Media</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 {/* Updated Placeholders for Social Media */}
                  <div>
                      <label className={labelStyle}>Facebook</label>
-                     <div className="flex"><div className="bg-[#1e1e1e] border border-gray-700 border-r-0 rounded-l-md px-3 flex items-center justify-center text-[#1877F2]"><Facebook size={18} /></div><input type="url" name="facebook" value={formData.socialLinks.facebook} onChange={handleSocialChange} className={`${inputBaseStyle} rounded-l-none`} placeholder="https://facebook.com/your-profile" /></div>
+                     <div className="flex">
+                        <div className="bg-[#1e1e1e] border border-gray-700 border-r-0 rounded-l-md px-3 flex items-center justify-center text-[#1877F2]">
+                            <Facebook size={18} />
+                        </div>
+                        <input type="url" name="facebook" value={formData.socialLinks.facebook} onChange={handleSocialChange} className={`${inputBaseStyle} rounded-l-none`} placeholder="https://facebook.com/your-profile" />
+                     </div>
                  </div>
                  <div>
                      <label className={labelStyle}>Instagram</label>
-                     <div className="flex"><div className="bg-[#1e1e1e] border border-gray-700 border-r-0 rounded-l-md px-3 flex items-center justify-center text-[#E4405F]"><Instagram size={18} /></div><input type="url" name="instagram" value={formData.socialLinks.instagram} onChange={handleSocialChange} className={`${inputBaseStyle} rounded-l-none`} placeholder="https://instagram.com/your-handle" /></div>
+                     <div className="flex">
+                        <div className="bg-[#1e1e1e] border border-gray-700 border-r-0 rounded-l-md px-3 flex items-center justify-center text-[#E4405F]">
+                            <Instagram size={18} />
+                        </div>
+                        <input type="url" name="instagram" value={formData.socialLinks.instagram} onChange={handleSocialChange} className={`${inputBaseStyle} rounded-l-none`} placeholder="https://instagram.com/your-handle" />
+                     </div>
                  </div>
                  <div>
                      <label className={labelStyle}>Twitter (X)</label>
-                     <div className="flex"><div className="bg-[#1e1e1e] border border-gray-700 border-r-0 rounded-l-md px-3 flex items-center justify-center text-white"><Twitter size={18} /></div><input type="url" name="twitter" value={formData.socialLinks.twitter} onChange={handleSocialChange} className={`${inputBaseStyle} rounded-l-none`} placeholder="https://x.com/your-handle" /></div>
+                     <div className="flex">
+                        <div className="bg-[#1e1e1e] border border-gray-700 border-r-0 rounded-l-md px-3 flex items-center justify-center text-white">
+                            <Twitter size={18} />
+                        </div>
+                        <input type="url" name="twitter" value={formData.socialLinks.twitter} onChange={handleSocialChange} className={`${inputBaseStyle} rounded-l-none`} placeholder="https://x.com/your-handle" />
+                     </div>
                  </div>
                  <div>
                      <label className={labelStyle}>LinkedIn</label>
-                     <div className="flex"><div className="bg-[#1e1e1e] border border-gray-700 border-r-0 rounded-l-md px-3 flex items-center justify-center text-[#0A66C2]"><Linkedin size={18} /></div><input type="url" name="linkedin" value={formData.socialLinks.linkedin} onChange={handleSocialChange} className={`${inputBaseStyle} rounded-l-none`} placeholder="https://linkedin.com/in/your-profile" /></div>
+                     <div className="flex">
+                        <div className="bg-[#1e1e1e] border border-gray-700 border-r-0 rounded-l-md px-3 flex items-center justify-center text-[#0A66C2]">
+                            <Linkedin size={18} />
+                        </div>
+                        <input type="url" name="linkedin" value={formData.socialLinks.linkedin} onChange={handleSocialChange} className={`${inputBaseStyle} rounded-l-none`} placeholder="https://linkedin.com/in/your-profile" />
+                     </div>
                  </div>
              </div>
         </div>
@@ -223,25 +251,35 @@ const BioTab: React.FC<Props> = ({
            <button type="button" onClick={onPreview} className="px-6 py-2.5 rounded-md border border-lime-500 text-lime-500 font-medium hover:bg-lime-500/10 transition-colors uppercase tracking-wide text-sm">Preview</button>
            
            <div className="flex gap-3">
-                <button type="button" onClick={onPrevious} className="px-6 py-2.5 rounded-md bg-gray-800 border border-gray-700 text-gray-300 font-bold hover:bg-gray-700 hover:text-white transition-all uppercase tracking-wide flex items-center gap-2 text-sm">
+                <button 
+                    type="button" 
+                    onClick={onPrevious} 
+                    className="px-6 py-2.5 rounded-md bg-gray-800 border border-gray-700 text-gray-300 font-bold hover:bg-gray-700 hover:text-white transition-all uppercase tracking-wide flex items-center gap-2 text-sm"
+                >
                     <ArrowLeft size={16} /> Previous
                 </button>
                 
                 <div className="relative" onMouseEnter={() => setHoverButton(true)} onMouseLeave={() => setHoverButton(false)}>
                     <button 
                         type="button" 
-                        onClick={onNext}
+                        onClick={onNext} 
                         disabled={!isValid}
                         className={`px-8 py-2.5 rounded-md font-bold uppercase tracking-wide flex items-center gap-2 transition-all text-sm
                             ${!isValid ? "bg-gray-700 text-gray-500 cursor-not-allowed border border-gray-600" : "bg-gradient-to-r from-lime-600 to-lime-500 text-black hover:brightness-110"}`
                         }
                     >
                         Next <ArrowRight size={16} />
-                </button>
+                    </button>
+                    
+                    {/* Error Tooltip */}
                     {!isValid && hoverButton && (
-                        <div className="absolute bottom-full right-0 mb-3 w-56 bg-red-900/90 text-white text-xs p-3 rounded-md border border-red-500 shadow-xl backdrop-blur-sm z-50 animate-in fade-in zoom-in">
-                            <div className="flex items-center gap-2 mb-2 border-b border-red-500/30 pb-2 font-bold"><AlertCircle size={14}/> Required Fields:</div>
-                            <ul className="list-disc pl-4 space-y-1 text-red-100/80">{errors.map((e,i)=><li key={i}>{e}</li>)}</ul>
+                        <div className="absolute bottom-full right-0 mb-3 w-64 bg-red-900/90 text-white text-xs p-3 rounded-md border border-red-500 shadow-xl backdrop-blur-sm z-50 animate-in fade-in zoom-in">
+                            <div className="flex items-center gap-2 mb-2 border-b border-red-500/30 pb-2 font-bold">
+                                <AlertCircle size={14}/> Required Fields:
+                            </div>
+                            <ul className="list-disc pl-4 space-y-1 text-red-100/80">
+                                {errors.map((e,i)=><li key={i}>{e}</li>)}
+                            </ul>
                         </div>
                     )}
                 </div>

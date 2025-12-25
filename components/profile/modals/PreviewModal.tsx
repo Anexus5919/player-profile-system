@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Activity, Mail, Phone, ImageIcon, Quote, ThumbsUp, ThumbsDown, Linkedin, Facebook, Twitter, Instagram } from "lucide-react";
+import { X, Activity, Mail, Phone, ImageIcon, Quote, ThumbsUp, ThumbsDown, Linkedin, Facebook, Twitter, Instagram, Trophy } from "lucide-react";
 import { FormData, Units } from "../CreateProfile";
 
 // --- CUSTOM INTERACTIVE SVG PIE CHART ---
@@ -95,6 +95,9 @@ interface Props {
 const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, units, activeTab }) => {
   if (!isOpen) return null;
 
+  // State for sport preview dropdown
+  const [selectedSport, setSelectedSport] = useState(data.sports.length > 0 ? data.sports[0] : "");
+
   const calculateAge = (dob: string) => {
     if (!dob) return "N/A";
     const age = Math.abs(new Date(Date.now() - new Date(dob).getTime()).getUTCFullYear() - 1970);
@@ -109,19 +112,17 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
       }
   }
 
-  // Helper for extra stats in preview
-  const getSportSpecificStats = () => {
-      if(data.statsSport === 'Cricket') return [
-          { label: "Runs", value: data.runsScored }, { label: "Wickets", value: data.wicketsTaken }
-      ];
-      if(data.statsSport === 'Football') return [
-          { label: "Goals", value: data.goalsScored }, { label: "Assists", value: data.assists }
-      ];
-      return [
-          { label: "Aces", value: data.aces }, { label: "Smash W.", value: data.smashWinners }
-      ];
+  // Helper for extra stats in preview based on selected sport
+  const getSportSpecificStats = (sport: string) => {
+      const stats = data.sportStats[sport] || {};
+      if(sport === 'Cricket') return [ { label: "Runs", value: stats.runsScored }, { label: "Wickets", value: stats.wicketsTaken } ];
+      if(sport === 'Football') return [ { label: "Goals", value: stats.goalsScored }, { label: "Assists", value: stats.assists } ];
+      return [ { label: "Aces", value: stats.aces }, { label: "Smash W.", value: stats.smashWinners } ];
   };
-  const extraStats = getSportSpecificStats();
+
+  // Get current stats for selected sport in preview
+  const currentStats = data.sportStats[selectedSport] || {};
+  const extraStats = getSportSpecificStats(selectedSport);
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
@@ -137,134 +138,131 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
            <div className="h-2 w-full bg-gradient-to-r from-lime-600 via-lime-400 to-lime-600 sticky top-0 z-20"></div>
            <div className="absolute top-[-50px] right-[-50px] opacity-[0.03] pointer-events-none rotate-12"><img src="/logo.svg" className="w-96 h-96" /></div>
 
-           {/* ======================= BIO PREVIEW ======================= */}
+           {/* --- BIO PREVIEW --- */}
            {activeTab === "BIO" ? (
-               <div className="p-8 relative z-10">
-                   {/* Top: Name & Quick Info */}
+               <div className="p-8 relative z-10 flex flex-col h-full">
                    <div className="flex items-center gap-6 mb-8 border-b border-gray-800 pb-6">
-                        <div className="w-20 h-20 rounded-full border-2 border-lime-500/50 overflow-hidden shrink-0">
-                            {image ? <img src={image} className="w-full h-full object-cover" /> : <div className="bg-gray-800 w-full h-full flex items-center justify-center"><ImageIcon size={24} className="text-gray-500"/></div>}
+                        <div className="w-24 h-24 rounded-full border-4 border-lime-500/20 overflow-hidden shrink-0 shadow-lg">
+                            {image ? <img src={image} className="w-full h-full object-cover" /> : <div className="bg-gray-800 w-full h-full flex items-center justify-center"><ImageIcon size={32} className="text-gray-500"/></div>}
                         </div>
                         <div>
-                            <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter leading-none">{data.fullName || "PLAYER NAME"}</h2>
-                            <p className="text-lime-500 text-sm font-medium mt-1">{data.sport} • {data.nationality}</p>
+                            <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter leading-none mb-2">{data.fullName || "PLAYER NAME"}</h2>
+                            <div className="flex flex-wrap gap-2 text-sm">
+                                <span className="text-lime-500 font-bold bg-lime-500/10 px-2 py-0.5 rounded border border-lime-500/20">{data.nationality || "Nationality"}</span>
+                                {data.sports.map(s => <span key={s} className="text-gray-400 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">{s}</span>)}
+                            </div>
                         </div>
                    </div>
 
-                   {/* Quote / Bio Section (REMOVED RANDOM QUOTES HERE) */}
+                   {/* Other Bio Sections */}
                    <div className="mb-8 relative pl-6 border-l-4 border-lime-500">
                        <Quote className="absolute top-[-10px] left-[-40px] text-gray-800 fill-current" size={40} />
-                       {/* REMOVED \" from below line */}
                        <p className="text-gray-300 italic text-lg leading-relaxed">{data.bio || "No bio provided yet."}</p>
                    </div>
-
-                   {/* Languages */}
-                   <div className="mb-8">
-                       <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Languages</h4>
-                       <div className="flex flex-wrap gap-2">
-                           {data.languages.length > 0 ? data.languages.map(l => (
-                               <span key={l} className="bg-gray-800 text-gray-300 px-3 py-1 rounded-full text-xs border border-gray-700">{l}</span>
-                           )) : <span className="text-gray-600 italic text-sm">None selected</span>}
-                       </div>
-                   </div>
-
-                   {/* Strengths & Weaknesses Split */}
+                   
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                       {/* Strengths */}
                        <div className="bg-lime-900/10 p-5 rounded-xl border border-lime-500/20">
-                           <div className="flex items-center gap-2 mb-4 text-lime-500 font-bold uppercase tracking-wider text-sm">
-                               <ThumbsUp size={16} /> Strengths
-                           </div>
-                           <div className="flex flex-wrap gap-2 mb-4">
-                               {data.strengths.length > 0 ? data.strengths.map(s => <span key={s} className="bg-lime-500/20 text-lime-400 px-2 py-1 rounded text-xs">{s}</span>) : <span className="text-gray-600 text-xs">None added</span>}
-                           </div>
-                           <p className="text-xs text-gray-400 leading-relaxed border-t border-lime-500/20 pt-3">
-                               {data.strengthDescription || "No description provided."}
-                           </p>
+                           <div className="flex items-center gap-2 mb-4 text-lime-500 font-bold uppercase tracking-wider text-sm"><ThumbsUp size={16} /> Strengths</div>
+                           <div className="flex flex-wrap gap-2 mb-4">{data.strengths.length > 0 ? data.strengths.map(s => <span key={s} className="bg-lime-500/20 text-lime-400 px-2 py-1 rounded text-xs">{s}</span>) : <span className="text-gray-600 text-xs">None added</span>}</div>
+                           <p className="text-xs text-gray-400 leading-relaxed border-t border-lime-500/20 pt-3">{data.strengthDescription || "No description provided."}</p>
                        </div>
-
-                       {/* Weaknesses */}
                        <div className="bg-red-900/10 p-5 rounded-xl border border-red-500/20">
-                           <div className="flex items-center gap-2 mb-4 text-red-500 font-bold uppercase tracking-wider text-sm">
-                               <ThumbsDown size={16} /> Areas to Improve
-                           </div>
-                           <div className="flex flex-wrap gap-2 mb-4">
-                               {data.weaknesses.length > 0 ? data.weaknesses.map(w => <span key={w} className="bg-red-500/20 text-red-400 px-2 py-1 rounded text-xs">{w}</span>) : <span className="text-gray-600 text-xs">None added</span>}
-                           </div>
-                           <p className="text-xs text-gray-400 leading-relaxed border-t border-red-500/20 pt-3">
-                               {data.weaknessDescription || "No description provided."}
-                           </p>
+                           <div className="flex items-center gap-2 mb-4 text-red-500 font-bold uppercase tracking-wider text-sm"><ThumbsDown size={16} /> Areas to Improve</div>
+                           <div className="flex flex-wrap gap-2 mb-4">{data.weaknesses.length > 0 ? data.weaknesses.map(w => <span key={w} className="bg-red-500/20 text-red-400 px-2 py-1 rounded text-xs">{w}</span>) : <span className="text-gray-600 text-xs">None added</span>}</div>
+                           <p className="text-xs text-gray-400 leading-relaxed border-t border-red-500/20 pt-3">{data.weaknessDescription || "No description provided."}</p>
                        </div>
                    </div>
 
-                   {/* Socials */}
                    <div className="flex gap-4 justify-center border-t border-gray-800 pt-6">
-                       {data.socialLinks.facebook && <Facebook size={20} className="text-blue-500 cursor-pointer hover:scale-110 transition-transform" />}
-                       {data.socialLinks.instagram && <Instagram size={20} className="text-pink-500 cursor-pointer hover:scale-110 transition-transform" />}
-                       {data.socialLinks.twitter && <Twitter size={20} className="text-blue-400 cursor-pointer hover:scale-110 transition-transform" />}
-                       {data.socialLinks.linkedin && <Linkedin size={20} className="text-blue-700 cursor-pointer hover:scale-110 transition-transform" />}
+                       {data.socialLinks.facebook && <a href={data.socialLinks.facebook} className="text-blue-500 hover:scale-110"><Facebook size={20} /></a>}
+                       {data.socialLinks.instagram && <a href={data.socialLinks.instagram} className="text-pink-500 hover:scale-110"><Instagram size={20} /></a>}
+                       {data.socialLinks.twitter && <a href={data.socialLinks.twitter} className="text-blue-400 hover:scale-110"><Twitter size={20} /></a>}
+                       {data.socialLinks.linkedin && <a href={data.socialLinks.linkedin} className="text-blue-700 hover:scale-110"><Linkedin size={20} /></a>}
                    </div>
                </div>
            ) : activeTab === "SPORTS STATS" ? (
-             /* --- SPORTS STATS PREVIEW (Same as before) --- */
+             /* --- SPORTS STATS PREVIEW (With Dropdown) --- */
              <div className="p-8 flex flex-col items-center justify-center relative z-10 h-full">
-                <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-8">{data.statsSport || "SPORT"} PERFORMANCE</h2>
-                
-                <div className="flex flex-col md:flex-row items-center gap-16">
-                    {/* The Pie Chart */}
-                    <div className="flex flex-col items-center">
-                        <PieChart 
-                            wins={parseInt(data.wins) || 0} 
-                            loss={parseInt(data.loss) || 0} 
-                            draws={parseInt(data.draws) || 0} 
-                        />
-                        {/* Legend below chart */}
-                        <div className="flex gap-4 mt-6 text-xs font-bold uppercase tracking-widest">
-                            <div className="flex items-center gap-2"><div className="w-3 h-3 bg-lime-500 rounded-sm"></div> Wins</div>
-                            <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-500 rounded-sm"></div> Loss</div>
-                            <div className="flex items-center gap-2"><div className="w-3 h-3 bg-yellow-500 rounded-sm"></div> Draws</div>
+                {data.sports.length > 0 ? (
+                    <>
+                        <div className="mb-8 w-full max-w-xs relative">
+                            <label className="text-[10px] uppercase font-bold text-gray-500 tracking-widest absolute -top-4 left-0">Select Sport View</label>
+                            <select 
+                                value={selectedSport} 
+                                onChange={(e) => setSelectedSport(e.target.value)} 
+                                className="w-full bg-[#1a1a1a] text-white text-lg font-bold px-4 py-2 rounded-md border border-gray-700 focus:border-lime-500 outline-none appearance-none"
+                            >
+                                {data.sports.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                            <div className="absolute right-3 top-3 pointer-events-none text-lime-500">▼</div>
                         </div>
-                    </div>
 
-                    {/* Numeric Stats */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-[#1a1a1a] p-4 rounded border border-gray-800 w-32 text-center">
-                            <span className="block text-xs text-gray-500 uppercase mb-1">Matches</span>
-                            <span className="text-2xl font-bold text-white">{data.matchesPlayed || "0"}</span>
-                        </div>
-                        <div className="bg-[#1a1a1a] p-4 rounded border border-gray-800 w-32 text-center">
-                            <span className="block text-xs text-gray-500 uppercase mb-1">Win Rate</span>
-                            <span className="text-2xl font-bold text-lime-500">
-                                {data.matchesPlayed && parseInt(data.matchesPlayed) > 0 
-                                    ? Math.round((parseInt(data.wins || "0") / parseInt(data.matchesPlayed)) * 100) + "%" 
-                                    : "0%"}
-                            </span>
-                        </div>
-                        {extraStats.map(stat => (
-                            <div key={stat.label} className="bg-[#1a1a1a] p-4 rounded border border-gray-800 w-32 text-center">
-                                <span className="block text-xs text-gray-500 uppercase mb-1">{stat.label}</span>
-                                <span className="text-xl font-bold text-white">{stat.value || "0"}</span>
+                        <div className="flex flex-col md:flex-row items-center gap-16 w-full justify-center">
+                            <div className="flex flex-col items-center">
+                                <PieChart 
+                                    wins={parseInt(currentStats.wins) || 0} 
+                                    loss={parseInt(currentStats.loss) || 0} 
+                                    draws={parseInt(currentStats.draws) || 0} 
+                                />
+                                <div className="flex gap-4 mt-6 text-xs font-bold uppercase tracking-widest">
+                                    <div className="flex items-center gap-2"><div className="w-3 h-3 bg-lime-500 rounded-sm"></div> Wins</div>
+                                    <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-500 rounded-sm"></div> Loss</div>
+                                    <div className="flex items-center gap-2"><div className="w-3 h-3 bg-yellow-500 rounded-sm"></div> Draws</div>
+                                </div>
                             </div>
-                        ))}
-                    </div>
-                </div>
+                            <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+                                <div className="bg-[#1a1a1a] p-4 rounded border border-gray-800 text-center"><span className="block text-xs text-gray-500 uppercase mb-1">Matches</span><span className="text-2xl font-bold text-white">{currentStats.matchesPlayed || "0"}</span></div>
+                                <div className="bg-[#1a1a1a] p-4 rounded border border-gray-800 text-center"><span className="block text-xs text-gray-500 uppercase mb-1">Win Rate</span><span className="text-2xl font-bold text-lime-500">{currentStats.matchesPlayed ? Math.round((parseInt(currentStats.wins || "0") / parseInt(currentStats.matchesPlayed)) * 100) + "%" : "0%"}</span></div>
+                                {extraStats.map(stat => (
+                                    <div key={stat.label} className="bg-[#1a1a1a] p-4 rounded border border-gray-800 text-center">
+                                        <span className="block text-xs text-gray-500 uppercase mb-1">{stat.label}</span>
+                                        <span className="text-xl font-bold text-white">{stat.value || "0"}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <p className="text-gray-500">No sports selected.</p>
+                )}
              </div>
            ) : (
              /* --- PERSONAL INFO PREVIEW --- */
              <div className="p-8 flex flex-col md:flex-row gap-8 relative z-10">
+                {/* LEFT SIDE: PHOTO & SPORT BADGE */}
                 <div className="flex-shrink-0 flex flex-col items-center gap-4">
-                   <div className="w-48 h-56 rounded-xl bg-gray-800 border-2 border-lime-500/30 overflow-hidden shadow-lg relative">
+                   <div className="w-48 h-56 rounded-xl bg-gray-800 border-2 border-lime-500/30 overflow-hidden shadow-lg relative group">
                       {image ? <img src={image} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-gray-600"><ImageIcon size={32} /></div>}
-                      <div className="absolute bottom-0 left-0 w-full bg-black/80 backdrop-blur-sm py-2 text-center border-t border-lime-500/30"><span className="text-lime-500 font-bold uppercase tracking-wider text-sm">{data.sport || "ATHLETE"}</span></div>
+                      
+                      {/* FIX: COMPACT OVERLAY */}
+                      <div className="absolute bottom-0 left-0 w-full bg-black/90 backdrop-blur-sm py-2 text-center border-t border-lime-500/30">
+                          <span className="text-lime-500 font-bold uppercase tracking-wider text-xs block truncate px-2">
+                              {data.sports.length > 1 ? `${data.sports[0]} +${data.sports.length - 1} More` : (data.sports[0] || "ATHLETE")}
+                          </span>
+                      </div>
                    </div>
                    <div className="flex flex-col items-center gap-1 opacity-50"><span className="text-[10px] tracking-[0.2em] text-gray-400">ID: {Date.now().toString().slice(-8)}</span></div>
                 </div>
 
+                {/* RIGHT SIDE: DETAILS */}
                 <div className="flex-1 w-full">
                    <div className="border-b border-gray-800 pb-4 mb-6">
                       <h2 className="text-4xl font-black text-white uppercase italic tracking-tighter">{data.fullName || "PLAYER NAME"}</h2>
-                      <div className="flex items-center gap-3 mt-2"><span className="bg-lime-500/10 text-lime-500 px-3 py-1 rounded text-xs font-bold uppercase border border-lime-500/20">{data.nationality || "Unknown"}</span><span className="text-gray-500 text-xs uppercase tracking-wider">• {data.gender || "N/A"} • {calculateAge(data.dob)} Years Old</span></div>
+                      
+                      {/* Full List of Sports Chips */}
+                      <div className="flex flex-wrap items-center gap-2 mt-3">
+                          <span className="bg-lime-500/10 text-lime-500 px-3 py-1 rounded text-xs font-bold uppercase border border-lime-500/20">{data.nationality || "Unknown"}</span>
+                          {data.sports.map(s => (
+                              <span key={s} className="bg-gray-800 text-gray-300 px-2 py-1 rounded text-xs border border-gray-700 flex items-center gap-1">
+                                  {s}
+                              </span>
+                          ))}
+                      </div>
+                      <div className="mt-2 text-gray-500 text-xs uppercase tracking-wider font-medium">
+                          • {data.gender || "N/A"} • {calculateAge(data.dob)} Years Old
+                      </div>
                    </div>
+
                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                       <div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-800"><span className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Height</span><span className="text-xl font-bold text-white">{data.height || "-"} <span className="text-xs text-gray-600">{units.height}</span></span></div>
                       <div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-800"><span className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Weight</span><span className="text-xl font-bold text-white">{data.weight || "-"} <span className="text-xs text-gray-600">{units.weight}</span></span></div>

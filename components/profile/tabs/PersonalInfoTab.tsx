@@ -64,14 +64,34 @@ const PersonalInfoTab: React.FC<Props> = ({
   const [hoverButton, setHoverButton] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
+  // Calculate Max Date (10 Years Ago)
+  const today = new Date();
+  const maxDateObj = new Date(today.getFullYear() - 10, today.getMonth(), today.getDate());
+  const maxDateString = maxDateObj.toISOString().split("T")[0]; // YYYY-MM-DD format
+
   // --- VALIDATION LOGIC ---
   useEffect(() => {
     const newErrors: string[] = [];
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!formData.fullName.trim()) newErrors.push("Full Name is required");
-    if (!formData.dob) newErrors.push("Date of Birth is required");
-    else if (new Date(formData.dob) > new Date()) newErrors.push("Date of Birth cannot be in the future");
+    
+    // DOB Validation
+    if (!formData.dob) {
+        newErrors.push("Date of Birth is required");
+    } else {
+        const selectedDate = new Date(formData.dob);
+        const minAgeDate = new Date();
+        minAgeDate.setFullYear(minAgeDate.getFullYear() - 10);
+        
+        // Reset time parts to ensure accurate comparison
+        selectedDate.setHours(0,0,0,0);
+        minAgeDate.setHours(0,0,0,0);
+
+        if (selectedDate > minAgeDate) {
+            newErrors.push("You must be at least 10 years old");
+        }
+    }
     
     // Dynamic Phone Validation
     if (!formData.contactNo) {
@@ -84,6 +104,7 @@ const PersonalInfoTab: React.FC<Props> = ({
     }
 
     if (!formData.gender) newErrors.push("Gender is required");
+    
     if (!formData.email) newErrors.push("Email is required");
     else if (!emailRegex.test(formData.email)) newErrors.push("Invalid Email Address");
 
@@ -139,7 +160,20 @@ const PersonalInfoTab: React.FC<Props> = ({
             
             {/* Inputs */}
             <div><Label required>Full Name</Label><input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className={inputBaseStyle} placeholder="Enter your full name" /></div>
-            <div><Label required>Date of Birth</Label><input type="date" name="dob" value={formData.dob} onChange={handleChange} max={new Date().toISOString().split("T")[0]} className={`${inputBaseStyle} [color-scheme:dark]`} /></div>
+            
+            {/* Date of Birth - Enforcing Minimum Age */}
+            <div>
+                <Label required>Date of Birth</Label>
+                <input 
+                    type="date" 
+                    name="dob" 
+                    value={formData.dob} 
+                    onChange={handleChange} 
+                    max={maxDateString} // UPDATED: Limits calendar to 10 years ago
+                    className={`${inputBaseStyle} [color-scheme:dark]`} 
+                />
+            </div>
+
             <div>
                 <Label required>Contact No.</Label>
                 <div className="flex"><div className="bg-[#1e1e1e] border border-gray-700 border-r-0 rounded-l-md px-3 flex items-center text-gray-400 text-sm min-w-[80px] justify-center gap-2 select-none"><span>{currentCountry.flag}</span><span>{currentCountry.code}</span></div><input type="tel" name="contactNo" value={formData.contactNo} onChange={handleChange} className={`${inputBaseStyle} rounded-l-none`} placeholder={currentCountry.placeholder} maxLength={currentCountry.maxLen} /></div>
@@ -150,7 +184,7 @@ const PersonalInfoTab: React.FC<Props> = ({
             <div><Label required>Nationality</Label><div className="relative"><select name="nationality" value={formData.nationality} onChange={(e) => {const c = COUNTRIES.find(x => x.nationality === e.target.value); if(c) handleNationalityChange(c.nationality, c.code);}} className={`${inputBaseStyle} appearance-none`}><option value="">Select</option>{COUNTRIES.map(c => <option key={c.name} value={c.nationality}>{c.nationality} ({c.name})</option>)}</select><ChevronDown className="absolute right-3 top-3 text-gray-500 pointer-events-none" size={16} /></div></div>
             <div className="md:col-span-1"><Label required>Address</Label><textarea name="address" rows={1} value={formData.address} onChange={handleChange} className={`${inputBaseStyle} resize-none overflow-hidden h-[42px]`} /></div>
 
-            {/* --- MULTI SELECT SPORTS (Replaces Single Dropdown) --- */}
+            {/* --- MULTI SELECT SPORTS --- */}
             <div>
               <Label required>Sports <InfoTooltip text="Select all sports you play" /></Label>
               <div className="bg-[#1a1a1a] p-3 rounded-md border border-gray-700 flex flex-wrap gap-2 min-h-[46px]">
@@ -224,7 +258,7 @@ const PersonalInfoTab: React.FC<Props> = ({
                     Next <ArrowRight size={18} />
                 </button>
 
-                {/* ERROR TOOLTIP */}
+                {/* ERROR TOOLTIP ON HOVER IF DISABLED */}
                 {!isValid && hoverButton && (
                     <div className="absolute bottom-full right-0 mb-3 w-64 bg-red-900/90 text-white text-xs p-3 rounded-md border border-red-500 shadow-xl backdrop-blur-sm z-50 animate-in fade-in zoom-in duration-200">
                         <div className="flex items-center gap-2 mb-2 border-b border-red-500/30 pb-2">

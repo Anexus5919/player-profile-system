@@ -1,15 +1,13 @@
 import React, { useState } from "react";
-import { X, Activity, Mail, Phone, ImageIcon } from "lucide-react";
+import { X, Activity, Mail, Phone, ImageIcon, Quote, ThumbsUp, ThumbsDown, Linkedin, Facebook, Twitter, Instagram } from "lucide-react";
 import { FormData, Units } from "../CreateProfile";
 
 // --- CUSTOM INTERACTIVE SVG PIE CHART ---
 const PieChart = ({ wins, loss, draws }: { wins: number, loss: number, draws: number }) => {
-  // Hover state now stores the index to ensure only one slice is highlighted
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tooltipData, setTooltipData] = useState<{ label: string; value: number; percent: string; color: string } | null>(null);
   
   const total = wins + loss + draws;
-  // If no data, return empty state
   if (total === 0) return (
     <div className="w-64 h-64 rounded-full border-4 border-gray-800 flex items-center justify-center text-xs text-gray-600 bg-[#0a0a0a]">
         No Data
@@ -32,7 +30,6 @@ const PieChart = ({ wins, loss, draws }: { wins: number, loss: number, draws: nu
 
   return (
     <div className="relative w-64 h-64 flex items-center justify-center">
-      {/* Added drop-shadow-2xl to the svg container for better depth */}
       <svg viewBox="-1.2 -1.2 2.4 2.4" className="transform -rotate-90 w-full h-full drop-shadow-2xl">
         {slices.map((slice, i) => {
           const start = getCoordinatesForPercent(cumPercent);
@@ -42,7 +39,6 @@ const PieChart = ({ wins, loss, draws }: { wins: number, loss: number, draws: nu
           const largeArcFlag = slicePercent > 0.5 ? 1 : 0;
           const pathData = `M 0 0 L ${start[0]} ${start[1]} A 1 1 0 ${largeArcFlag} 1 ${end[0]} ${end[1]} L 0 0`;
           
-          // Determine if this slice is hovered
           const isHovered = hoveredIndex === i;
 
           return (
@@ -52,12 +48,8 @@ const PieChart = ({ wins, loss, draws }: { wins: number, loss: number, draws: nu
                 fill={slice.color} 
                 stroke="#121212" 
                 strokeWidth="0.02"
-                // --- FIX IS HERE ---
-                // Removed hover:scale-105 and origin-center. 
-                // Used brightness filter for highlight and slight opacity drop for non-hovered.
                 className={`cursor-pointer transition-all duration-200 ${isHovered ? 'brightness-125' : 'hover:brightness-110'} `}
                 style={{ 
-                   // Optional: Slight dimming of other slices to make hovered one pop more
                    opacity: hoveredIndex !== null && !isHovered ? 0.7 : 1 
                 }}
                 onMouseEnter={() => {
@@ -71,11 +63,10 @@ const PieChart = ({ wins, loss, draws }: { wins: number, loss: number, draws: nu
             />
           );
         })}
-        {/* Hollow center for Donut Effect */}
         <circle cx="0" cy="0" r="0.6" fill="#121212" />
       </svg>
       
-      {/* Edge Tooltip (Positioned Top Right of the container) */}
+      {/* Edge Tooltip */}
       {tooltipData && (
           <div className="absolute top-0 -right-16 z-20 bg-[#1a1a1a] p-3 rounded-lg border border-gray-700 shadow-2xl animate-in fade-in slide-in-from-left-2 duration-200 min-w-[100px]">
               <div className="flex items-center gap-2 mb-1">
@@ -110,7 +101,15 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
     return isNaN(age) ? "N/A" : age;
   };
 
-  // Helper to get specific stats based on sport
+  const getTitle = () => {
+      switch(activeTab) {
+          case "SPORTS STATS": return "Season Stats";
+          case "BIO": return "Scout Report";
+          default: return "Player Card";
+      }
+  }
+
+  // Helper for extra stats in preview
   const getSportSpecificStats = () => {
       if(data.statsSport === 'Cricket') return [
           { label: "Runs", value: data.runsScored }, { label: "Wickets", value: data.wicketsTaken }
@@ -122,7 +121,6 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
           { label: "Aces", value: data.aces }, { label: "Smash W.", value: data.smashWinners }
       ];
   };
-
   const extraStats = getSportSpecificStats();
 
   return (
@@ -130,42 +128,85 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
       <div className="w-full max-w-3xl flex flex-col animate-in fade-in zoom-in duration-200">
         {/* Header */}
         <div className="flex justify-between items-center mb-2 px-2">
-            <h3 className="text-white/50 text-sm font-medium uppercase tracking-widest">Preview Mode: {activeTab === "SPORTS STATS" ? "Season Stats" : "Player Card"}</h3>
+            <h3 className="text-white/50 text-sm font-medium uppercase tracking-widest">Preview: {getTitle()}</h3>
             <button onClick={onClose} className="text-white hover:text-lime-500 transition-colors"><X size={28} /></button>
         </div>
 
         {/* Card Body */}
-        <div className="bg-[#121212] rounded-2xl overflow-hidden shadow-2xl border border-gray-800 relative group min-h-[450px]">
-           <div className="h-2 w-full bg-gradient-to-r from-lime-600 via-lime-400 to-lime-600"></div>
+        <div className="bg-[#121212] rounded-2xl overflow-hidden shadow-2xl border border-gray-800 relative group min-h-[450px] max-h-[85vh] overflow-y-auto custom-scrollbar">
+           <div className="h-2 w-full bg-gradient-to-r from-lime-600 via-lime-400 to-lime-600 sticky top-0 z-20"></div>
            <div className="absolute top-[-50px] right-[-50px] opacity-[0.03] pointer-events-none rotate-12"><img src="/logo.svg" className="w-96 h-96" /></div>
 
-           {/* --- PERSONAL INFO PREVIEW --- */}
-           {activeTab !== "SPORTS STATS" ? (
-             <div className="p-8 flex flex-col md:flex-row gap-8 relative z-10">
-                <div className="flex-shrink-0 flex flex-col items-center gap-4">
-                   <div className="w-48 h-56 rounded-xl bg-gray-800 border-2 border-lime-500/30 overflow-hidden shadow-lg relative">
-                      {image ? <img src={image} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-gray-600"><ImageIcon size={32} /></div>}
-                      <div className="absolute bottom-0 left-0 w-full bg-black/80 backdrop-blur-sm py-2 text-center border-t border-lime-500/30"><span className="text-lime-500 font-bold uppercase tracking-wider text-sm">{data.sport || "ATHLETE"}</span></div>
+           {/* ======================= BIO PREVIEW ======================= */}
+           {activeTab === "BIO" ? (
+               <div className="p-8 relative z-10">
+                   {/* Top: Name & Quick Info */}
+                   <div className="flex items-center gap-6 mb-8 border-b border-gray-800 pb-6">
+                        <div className="w-20 h-20 rounded-full border-2 border-lime-500/50 overflow-hidden shrink-0">
+                            {image ? <img src={image} className="w-full h-full object-cover" /> : <div className="bg-gray-800 w-full h-full flex items-center justify-center"><ImageIcon size={24} className="text-gray-500"/></div>}
+                        </div>
+                        <div>
+                            <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter leading-none">{data.fullName || "PLAYER NAME"}</h2>
+                            <p className="text-lime-500 text-sm font-medium mt-1">{data.sport} • {data.nationality}</p>
+                        </div>
                    </div>
-                   <div className="flex flex-col items-center gap-1 opacity-50"><span className="text-[10px] tracking-[0.2em] text-gray-400">ID: {Date.now().toString().slice(-8)}</span></div>
-                </div>
 
-                <div className="flex-1 w-full">
-                   <div className="border-b border-gray-800 pb-4 mb-6">
-                      <h2 className="text-4xl font-black text-white uppercase italic tracking-tighter">{data.fullName || "PLAYER NAME"}</h2>
-                      <div className="flex items-center gap-3 mt-2"><span className="bg-lime-500/10 text-lime-500 px-3 py-1 rounded text-xs font-bold uppercase border border-lime-500/20">{data.nationality || "Unknown"}</span><span className="text-gray-500 text-xs uppercase tracking-wider">• {data.gender || "N/A"} • {calculateAge(data.dob)} Years Old</span></div>
+                   {/* Quote / Bio Section (REMOVED RANDOM QUOTES HERE) */}
+                   <div className="mb-8 relative pl-6 border-l-4 border-lime-500">
+                       <Quote className="absolute top-[-10px] left-[-40px] text-gray-800 fill-current" size={40} />
+                       {/* REMOVED \" from below line */}
+                       <p className="text-gray-300 italic text-lg leading-relaxed">{data.bio || "No bio provided yet."}</p>
                    </div>
-                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                      <div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-800"><span className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Height</span><span className="text-xl font-bold text-white">{data.height || "-"} <span className="text-xs text-gray-600">{units.height}</span></span></div>
-                      <div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-800"><span className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Weight</span><span className="text-xl font-bold text-white">{data.weight || "-"} <span className="text-xs text-gray-600">{units.weight}</span></span></div>
-                      <div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-800 md:col-span-2 relative overflow-hidden"><div className={`absolute right-0 top-0 h-full w-1 ${bmiData.color.replace('text-', 'bg-')}`}></div><span className="text-gray-500 text-[10px] uppercase font-bold block mb-1">BMI Index</span><div className="flex items-baseline gap-2"><span className={`text-xl font-bold ${bmiData.color}`}>{bmiData.value || "--"}</span><span className="text-xs text-gray-400">({bmiData.status})</span></div></div>
+
+                   {/* Languages */}
+                   <div className="mb-8">
+                       <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Languages</h4>
+                       <div className="flex flex-wrap gap-2">
+                           {data.languages.length > 0 ? data.languages.map(l => (
+                               <span key={l} className="bg-gray-800 text-gray-300 px-3 py-1 rounded-full text-xs border border-gray-700">{l}</span>
+                           )) : <span className="text-gray-600 italic text-sm">None selected</span>}
+                       </div>
                    </div>
-                   <div className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg border border-gray-800 mb-4"><div className="flex items-center gap-3"><Activity size={18} className="text-lime-500"/><span className="text-sm font-medium text-gray-300">Agility Rating</span></div><div className="flex gap-1">{[1,2,3,4,5].map(star => <div key={star} className={`h-2 w-6 rounded-full ${star <= parseInt(data.agilityRating || '0') ? 'bg-lime-500 shadow-[0_0_8px_rgba(132,204,22,0.5)]' : 'bg-gray-700'}`}></div>)}</div></div>
-                   <div className="col-span-2 flex flex-wrap gap-4 text-xs text-gray-400"><span className="flex items-center gap-1.5"><Mail size={12} className="text-lime-500"/> {data.email || "No Email"}</span><span className="flex items-center gap-1.5"><Phone size={12} className="text-lime-500"/> {data.contactNo || "No Phone"}</span></div>
-                </div>
-             </div>
-           ) : (
-             /* --- SPORTS STATS PIE CHART PREVIEW --- */
+
+                   {/* Strengths & Weaknesses Split */}
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                       {/* Strengths */}
+                       <div className="bg-lime-900/10 p-5 rounded-xl border border-lime-500/20">
+                           <div className="flex items-center gap-2 mb-4 text-lime-500 font-bold uppercase tracking-wider text-sm">
+                               <ThumbsUp size={16} /> Strengths
+                           </div>
+                           <div className="flex flex-wrap gap-2 mb-4">
+                               {data.strengths.length > 0 ? data.strengths.map(s => <span key={s} className="bg-lime-500/20 text-lime-400 px-2 py-1 rounded text-xs">{s}</span>) : <span className="text-gray-600 text-xs">None added</span>}
+                           </div>
+                           <p className="text-xs text-gray-400 leading-relaxed border-t border-lime-500/20 pt-3">
+                               {data.strengthDescription || "No description provided."}
+                           </p>
+                       </div>
+
+                       {/* Weaknesses */}
+                       <div className="bg-red-900/10 p-5 rounded-xl border border-red-500/20">
+                           <div className="flex items-center gap-2 mb-4 text-red-500 font-bold uppercase tracking-wider text-sm">
+                               <ThumbsDown size={16} /> Areas to Improve
+                           </div>
+                           <div className="flex flex-wrap gap-2 mb-4">
+                               {data.weaknesses.length > 0 ? data.weaknesses.map(w => <span key={w} className="bg-red-500/20 text-red-400 px-2 py-1 rounded text-xs">{w}</span>) : <span className="text-gray-600 text-xs">None added</span>}
+                           </div>
+                           <p className="text-xs text-gray-400 leading-relaxed border-t border-red-500/20 pt-3">
+                               {data.weaknessDescription || "No description provided."}
+                           </p>
+                       </div>
+                   </div>
+
+                   {/* Socials */}
+                   <div className="flex gap-4 justify-center border-t border-gray-800 pt-6">
+                       {data.socialLinks.facebook && <Facebook size={20} className="text-blue-500 cursor-pointer hover:scale-110 transition-transform" />}
+                       {data.socialLinks.instagram && <Instagram size={20} className="text-pink-500 cursor-pointer hover:scale-110 transition-transform" />}
+                       {data.socialLinks.twitter && <Twitter size={20} className="text-blue-400 cursor-pointer hover:scale-110 transition-transform" />}
+                       {data.socialLinks.linkedin && <Linkedin size={20} className="text-blue-700 cursor-pointer hover:scale-110 transition-transform" />}
+                   </div>
+               </div>
+           ) : activeTab === "SPORTS STATS" ? (
+             /* --- SPORTS STATS PREVIEW (Same as before) --- */
              <div className="p-8 flex flex-col items-center justify-center relative z-10 h-full">
                 <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-8">{data.statsSport || "SPORT"} PERFORMANCE</h2>
                 
@@ -206,6 +247,31 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
                             </div>
                         ))}
                     </div>
+                </div>
+             </div>
+           ) : (
+             /* --- PERSONAL INFO PREVIEW --- */
+             <div className="p-8 flex flex-col md:flex-row gap-8 relative z-10">
+                <div className="flex-shrink-0 flex flex-col items-center gap-4">
+                   <div className="w-48 h-56 rounded-xl bg-gray-800 border-2 border-lime-500/30 overflow-hidden shadow-lg relative">
+                      {image ? <img src={image} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-gray-600"><ImageIcon size={32} /></div>}
+                      <div className="absolute bottom-0 left-0 w-full bg-black/80 backdrop-blur-sm py-2 text-center border-t border-lime-500/30"><span className="text-lime-500 font-bold uppercase tracking-wider text-sm">{data.sport || "ATHLETE"}</span></div>
+                   </div>
+                   <div className="flex flex-col items-center gap-1 opacity-50"><span className="text-[10px] tracking-[0.2em] text-gray-400">ID: {Date.now().toString().slice(-8)}</span></div>
+                </div>
+
+                <div className="flex-1 w-full">
+                   <div className="border-b border-gray-800 pb-4 mb-6">
+                      <h2 className="text-4xl font-black text-white uppercase italic tracking-tighter">{data.fullName || "PLAYER NAME"}</h2>
+                      <div className="flex items-center gap-3 mt-2"><span className="bg-lime-500/10 text-lime-500 px-3 py-1 rounded text-xs font-bold uppercase border border-lime-500/20">{data.nationality || "Unknown"}</span><span className="text-gray-500 text-xs uppercase tracking-wider">• {data.gender || "N/A"} • {calculateAge(data.dob)} Years Old</span></div>
+                   </div>
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                      <div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-800"><span className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Height</span><span className="text-xl font-bold text-white">{data.height || "-"} <span className="text-xs text-gray-600">{units.height}</span></span></div>
+                      <div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-800"><span className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Weight</span><span className="text-xl font-bold text-white">{data.weight || "-"} <span className="text-xs text-gray-600">{units.weight}</span></span></div>
+                      <div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-800 md:col-span-2 relative overflow-hidden"><div className={`absolute right-0 top-0 h-full w-1 ${bmiData.color.replace('text-', 'bg-')}`}></div><span className="text-gray-500 text-[10px] uppercase font-bold block mb-1">BMI Index</span><div className="flex items-baseline gap-2"><span className={`text-xl font-bold ${bmiData.color}`}>{bmiData.value || "--"}</span><span className="text-xs text-gray-400">({bmiData.status})</span></div></div>
+                   </div>
+                   <div className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg border border-gray-800 mb-4"><div className="flex items-center gap-3"><Activity size={18} className="text-lime-500"/><span className="text-sm font-medium text-gray-300">Agility Rating</span></div><div className="flex gap-1">{[1,2,3,4,5].map(star => <div key={star} className={`h-2 w-6 rounded-full ${star <= parseInt(data.agilityRating || '0') ? 'bg-lime-500 shadow-[0_0_8px_rgba(132,204,22,0.5)]' : 'bg-gray-700'}`}></div>)}</div></div>
+                   <div className="col-span-2 flex flex-wrap gap-4 text-xs text-gray-400"><span className="flex items-center gap-1.5"><Mail size={12} className="text-lime-500"/> {data.email || "No Email"}</span><span className="flex items-center gap-1.5"><Phone size={12} className="text-lime-500"/> {data.contactNo || "No Phone"}</span></div>
                 </div>
              </div>
            )}

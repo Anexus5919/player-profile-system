@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ChevronDown, Info, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ChevronDown, Info, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
 import { FormData } from "../CreateProfile";
 
 // Tooltip Helper
@@ -29,6 +29,7 @@ interface Props {
   handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onPreview: () => void;
   onNext: () => void;
+  onPrevious: () => void;
 }
 
 const SPORT_CONFIGS: Record<string, { label: string; name: keyof FormData; tooltip?: string }[]> = {
@@ -55,10 +56,26 @@ const SPORT_CONFIGS: Record<string, { label: string; name: keyof FormData; toolt
         { label: "Draws", name: "draws" },
         { label: "Goals Scored", name: "goalsScored", tooltip: "Total goals scored." },
         { label: "Assists", name: "assists", tooltip: "Passes that directly led to a goal." },
+    ],
+    Tennis: [
+        { label: "Matches Played", name: "matchesPlayed" },
+        { label: "Wins", name: "wins" },
+        { label: "Loss", name: "loss" },
+        { label: "Draws/Tie", name: "draws" },
+        { label: "Aces", name: "aces", tooltip: "Serve untouched by opponent." },
+        { label: "Break Points", name: "smashWinners", tooltip: "Break points converted." },
+    ],
+    Squash: [
+        { label: "Matches Played", name: "matchesPlayed" },
+        { label: "Wins", name: "wins" },
+        { label: "Loss", name: "loss" },
+        { label: "Draws", name: "draws" },
+        { label: "Points Won", name: "aces" },
+        { label: "Nick Shots", name: "smashWinners", tooltip: "Shot hitting the junction of wall and floor." },
     ]
 };
 
-const SportsStatsTab: React.FC<Props> = ({ formData, handleChange, onPreview, onNext }) => {
+const SportsStatsTab: React.FC<Props> = ({ formData, handleChange, onPreview, onNext, onPrevious }) => {
   const activeFields = SPORT_CONFIGS[formData.statsSport] || SPORT_CONFIGS["Badminton"];
   const [validationMsg, setValidationMsg] = useState<{ type: 'error' | 'warning' | 'success', text: string } | null>(null);
 
@@ -92,12 +109,10 @@ const SportsStatsTab: React.FC<Props> = ({ formData, handleChange, onPreview, on
     }
   }, [formData.matchesPlayed, formData.wins, formData.loss, formData.draws]);
 
-  // Disable Next if there is a critical error
   const isNextDisabled = validationMsg?.type === 'error';
 
   return (
     <div className="animate-in fade-in duration-300">
-        {/* Sport Selector */}
         <div className="flex justify-end mb-6">
             <div className="relative w-48">
                 <span className="absolute -top-5 left-0 text-[#a3a3a3] text-xs font-medium">Select Sport :</span>
@@ -112,9 +127,8 @@ const SportsStatsTab: React.FC<Props> = ({ formData, handleChange, onPreview, on
             </div>
         </div>
 
-        {/* Validation Message Banner */}
         {validationMsg && (
-            <div className={`mb-6 p-3 rounded-md text-xs flex items-center gap-2 border 
+            <div className={`mb-6 p-3 rounded-md text-xs flex items-center gap-2 border transition-all duration-300
                 ${validationMsg.type === 'error' ? 'bg-red-900/20 border-red-900/50 text-red-400' : 
                   validationMsg.type === 'warning' ? 'bg-yellow-900/20 border-yellow-900/50 text-yellow-400' : 
                   'bg-lime-900/20 border-lime-900/50 text-lime-400'}`}
@@ -124,7 +138,6 @@ const SportsStatsTab: React.FC<Props> = ({ formData, handleChange, onPreview, on
             </div>
         )}
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {activeFields.map((field) => (
                 <div key={field.name} className="bg-[#0f0f0f] p-6 rounded-lg border border-gray-800 shadow-md hover:border-gray-700 transition-colors relative group">
@@ -141,7 +154,8 @@ const SportsStatsTab: React.FC<Props> = ({ formData, handleChange, onPreview, on
                             name={field.name} 
                             value={(formData as any)[field.name]} 
                             onChange={handleChange}
-                            className="w-24 bg-[#2C2C2C] text-white rounded px-3 py-1.5 outline-none border border-transparent focus:border-lime-500/50 text-center font-mono focus:bg-[#333]"
+                            // ADDED: [appearance:textfield] and kit-outer/inner-spin-button to hide arrows
+                            className="w-24 bg-[#2C2C2C] text-white rounded px-3 py-1.5 outline-none border border-transparent focus:border-lime-500/50 text-center font-mono focus:bg-[#333] transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             placeholder="0"
                         />
                     </div>
@@ -149,22 +163,27 @@ const SportsStatsTab: React.FC<Props> = ({ formData, handleChange, onPreview, on
             ))}
         </div>
 
-        {/* Buttons */}
-        <div className="flex justify-end gap-4 mt-12 pt-6 border-t border-gray-800">
-           <button type="button" onClick={onPreview} className="px-8 py-2.5 rounded-md border border-lime-500 text-lime-500 font-medium hover:bg-lime-500/10 transition-colors uppercase tracking-wide">Preview</button>
+        <div className="flex justify-end gap-4 mt-12 pt-6 border-t border-gray-800 items-center">
+           <button type="button" onClick={onPreview} className="px-6 py-2.5 rounded-md border border-lime-500 text-lime-500 font-medium hover:bg-lime-500/10 transition-colors uppercase tracking-wide text-sm">Preview</button>
            
-           <button 
-                type="button" 
-                onClick={onNext}
-                disabled={isNextDisabled}
-                className={`px-10 py-2.5 rounded-md font-bold uppercase tracking-wide flex items-center gap-2 transition-all
-                    ${isNextDisabled 
-                        ? "bg-gray-700 text-gray-500 cursor-not-allowed border border-gray-600" 
-                        : "bg-gradient-to-r from-lime-600 to-lime-500 text-black hover:brightness-110"}`
-                }
-            >
-                Next <ArrowRight size={18} />
-            </button>
+           <div className="flex gap-3">
+                <button type="button" onClick={onPrevious} className="px-6 py-2.5 rounded-md bg-gray-800 border border-gray-700 text-gray-300 font-bold hover:bg-gray-700 hover:text-white transition-all uppercase tracking-wide flex items-center gap-2 text-sm">
+                    <ArrowLeft size={16} /> Previous
+                </button>
+
+                <button 
+                    type="button" 
+                    onClick={onNext}
+                    disabled={isNextDisabled}
+                    className={`px-8 py-2.5 rounded-md font-bold uppercase tracking-wide flex items-center gap-2 transition-all text-sm
+                        ${isNextDisabled 
+                            ? "bg-gray-700 text-gray-500 cursor-not-allowed border border-gray-600" 
+                            : "bg-gradient-to-r from-lime-600 to-lime-500 text-black hover:brightness-110"}`
+                    }
+                >
+                    Next <ArrowRight size={16} />
+                </button>
+           </div>
         </div>
     </div>
   );

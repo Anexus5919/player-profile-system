@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowRight, ArrowLeft, Plus, Trash2, Trophy, MapPin, Calendar, Award, AlertCircle } from "lucide-react";
+import { ArrowRight, ArrowLeft, Plus, Trash2, Trophy, MapPin, Calendar, Award, AlertCircle, Medal, Ribbon } from "lucide-react";
 import { ParticipationRecord } from "../CreateProfile";
 
 // --- STYLES ---
@@ -27,29 +27,40 @@ const ParticipationTab: React.FC<Props> = ({ participations, onAdd, onRemove, on
       result: ""
   });
 
-  const [isAdding, setIsAdding] = useState(false); // Controls if the form is visible
+  const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // --- HELPER: Get Icon based on Result ---
+  const getResultIcon = (result: string) => {
+      switch (result) {
+          case 'Winner': return <Trophy size={18} className="text-yellow-500" />;
+          case 'Runner Up': return <Medal size={18} className="text-gray-300" />; // Silver
+          case 'Semi-Finalist': return <Medal size={18} className="text-orange-400" />; // Bronze-ish
+          case 'Quarter-Finalist': return <Award size={18} className="text-blue-400" />;
+          default: return <Ribbon size={18} className="text-gray-500" />;
+      }
+  };
+
+  // --- SORTING: Ascending Date (Oldest First) ---
+  const sortedParticipations = [...participations].sort((a, b) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setNewEntry(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSave = () => {
-      // Validation
       if (!newEntry.tournamentName.trim() || !newEntry.level || !newEntry.date || !newEntry.result) {
           setError("Please fill all required fields.");
           return;
       }
-
       onAdd({ ...newEntry, id: Date.now().toString() });
-      
-      // Reset form
       setNewEntry({ id: "", tournamentName: "", level: "", date: "", location: "", result: "" });
       setIsAdding(false);
       setError(null);
   };
 
-  // Determine if we can proceed (Next is disabled if user is currently typing a new entry but hasn't saved)
   const canProceed = !isAdding;
 
   return (
@@ -83,7 +94,7 @@ const ParticipationTab: React.FC<Props> = ({ participations, onAdd, onRemove, on
                     <div><label className={labelStyle}>Level <span className="text-red-500">*</span></label><select name="level" value={newEntry.level} onChange={handleChange} className={inputBaseStyle}><option value="">Select Level</option><option value="Inter-College">Inter-College</option><option value="District">District</option><option value="State">State</option><option value="National">National</option><option value="International">International</option></select></div>
                     <div><label className={labelStyle}>Date <span className="text-red-500">*</span></label><input type="date" name="date" value={newEntry.date} onChange={handleChange} className={`${inputBaseStyle} [color-scheme:dark]`} max={new Date().toISOString().split("T")[0]} /></div>
                     <div><label className={labelStyle}>Location</label><input type="text" name="location" value={newEntry.location} onChange={handleChange} className={inputBaseStyle} placeholder="e.g. Mumbai, India" /></div>
-                    <div className="md:col-span-2"><label className={labelStyle}>Result / Achievement <span className="text-red-500">*</span></label><select name="result" value={newEntry.result} onChange={handleChange} className={inputBaseStyle}><option value="">Select Result</option><option value="Winner">Winner (Gold)</option><option value="Runner Up">Runner Up (Silver)</option><option value="Semi-Finalist">Semi-Finalist</option><option value="Quarter-Finalist">Quarter-Finalist</option><option value="Participant">Participant</option></select></div>
+                    <div className="md:col-span-2"><label className={labelStyle}>Result / Achievement <span className="text-red-500">*</span></label><select name="result" value={newEntry.result} onChange={handleChange} className={inputBaseStyle}><option value="">Select Result</option><option value="Winner">Winner (Gold)</option><option value="Runner Up">Runner Up (Silver)</option><option value="Semi-Finalist">Semi-Finalist (Bronze)</option><option value="Quarter-Finalist">Quarter-Finalist</option><option value="Participant">Participant</option></select></div>
                 </div>
 
                 {error && <div className="text-red-400 text-xs flex items-center gap-2 mb-4 bg-red-900/20 p-2 rounded"><AlertCircle size={14}/> {error}</div>}
@@ -95,9 +106,9 @@ const ParticipationTab: React.FC<Props> = ({ participations, onAdd, onRemove, on
             </div>
         )}
 
-        {/* --- LIST OF ENTRIES --- */}
+        {/* --- LIST OF ENTRIES (Sorted) --- */}
         <div className="space-y-3">
-            {participations.length === 0 && !isAdding && (
+            {sortedParticipations.length === 0 && !isAdding && (
                 <div className="text-center py-12 bg-[#151515] rounded-lg border border-dashed border-gray-800 text-gray-500">
                     <Trophy size={48} className="mx-auto mb-3 opacity-20" />
                     <p>No tournaments added yet.</p>
@@ -105,19 +116,21 @@ const ParticipationTab: React.FC<Props> = ({ participations, onAdd, onRemove, on
                 </div>
             )}
 
-            {participations.map((p) => (
+            {sortedParticipations.map((p) => (
                 <div key={p.id} className="bg-[#151515] p-4 rounded-lg border border-gray-800 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-gray-700 transition-colors group">
                     <div className="flex items-start gap-4">
-                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-xl shrink-0 
-                            ${p.result === 'Winner' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' : 
-                              p.result === 'Runner Up' ? 'bg-gray-400/20 text-gray-300 border border-gray-400/30' : 
-                              'bg-gray-800 text-gray-500 border border-gray-700'}`}>
-                            <Trophy size={20} />
+                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 
+                            ${p.result === 'Winner' ? 'bg-yellow-500/10 border border-yellow-500/30' : 
+                              p.result === 'Runner Up' ? 'bg-gray-400/10 border border-gray-400/30' : 
+                              'bg-gray-800 border border-gray-700'}`}>
+                            {getResultIcon(p.result)}
                         </div>
                         <div>
                             <h4 className="text-white font-bold text-base leading-tight">{p.tournamentName}</h4>
                             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs text-gray-400">
-                                <span className="flex items-center gap-1"><Award size={12} className="text-lime-500"/> {p.result}</span>
+                                <span className={`flex items-center gap-1 font-medium ${p.result === 'Winner' ? 'text-yellow-500' : p.result === 'Runner Up' ? 'text-gray-300' : 'text-lime-500'}`}>
+                                    {getResultIcon(p.result)} {p.result}
+                                </span>
                                 <span className="flex items-center gap-1"><MapPin size={12}/> {p.location || "N/A"}</span>
                                 <span className="flex items-center gap-1"><Calendar size={12}/> {p.date}</span>
                             </div>
@@ -135,13 +148,10 @@ const ParticipationTab: React.FC<Props> = ({ participations, onAdd, onRemove, on
         {/* --- ACTION BUTTONS --- */}
         <div className="flex justify-end gap-4 mt-12 pt-6 border-t border-gray-800 items-center">
            <button type="button" onClick={onPreview} className="px-6 py-2.5 rounded-md border border-lime-500 text-lime-500 font-medium hover:bg-lime-500/10 transition-colors uppercase tracking-wide text-sm">Preview</button>
-           
            <div className="flex gap-3">
                 <button type="button" onClick={onPrevious} className="px-6 py-2.5 rounded-md bg-gray-800 border border-gray-700 text-gray-300 font-bold hover:bg-gray-700 hover:text-white transition-all uppercase tracking-wide flex items-center gap-2 text-sm">
                     <ArrowLeft size={16} /> Previous
                 </button>
-                
-                {/* Disabled if currently adding to force save/cancel */}
                 <button 
                     type="button" 
                     onClick={onNext}

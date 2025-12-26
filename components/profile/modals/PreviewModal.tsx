@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Activity, Mail, Phone, ImageIcon, Quote, ThumbsUp, ThumbsDown, Linkedin, Facebook, Twitter, Instagram, Trophy } from "lucide-react";
+import { X, Activity, Mail, Phone, ImageIcon, Quote, ThumbsUp, ThumbsDown, Linkedin, Facebook, Twitter, Instagram, Trophy, Calendar, MapPin, Award } from "lucide-react";
 import { FormData, Units } from "../CreateProfile";
 
 // --- CUSTOM INTERACTIVE SVG PIE CHART ---
@@ -108,6 +108,7 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
       switch(activeTab) {
           case "SPORTS STATS": return "Season Stats";
           case "BIO": return "Scout Report";
+          case "PARTICIPATION": return "Career Timeline";
           default: return "Player Card";
       }
   }
@@ -226,10 +227,49 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
                     <p className="text-gray-500">No sports selected.</p>
                 )}
              </div>
+           ) : activeTab === "PARTICIPATION" ? (
+             /* --- PARTICIPATION PREVIEW (Timeline) --- */
+             <div className="p-8 relative z-10">
+                 <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-8 text-center">Tournament History</h2>
+                 
+                 {data.participations.length > 0 ? (
+                     <div className="relative border-l-2 border-gray-800 ml-4 space-y-8">
+                         {data.participations.map((p, i) => (
+                             <div key={i} className="relative pl-8">
+                                 {/* Timeline Dot */}
+                                 <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 
+                                     ${p.result === 'Winner' ? 'bg-yellow-500 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]' : 
+                                       p.result === 'Runner Up' ? 'bg-gray-400 border-gray-400' : 
+                                       'bg-[#121212] border-gray-600'}`}>
+                                 </div>
+                                 
+                                 {/* Card */}
+                                 <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800 hover:border-gray-600 transition-colors">
+                                     <div className="flex justify-between items-start mb-2">
+                                         <h4 className="text-white font-bold text-lg">{p.tournamentName}</h4>
+                                         <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border 
+                                             ${p.result === 'Winner' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : 
+                                               p.result === 'Runner Up' ? 'bg-gray-400/10 text-gray-300 border-gray-400/20' : 
+                                               'bg-gray-800 text-gray-500 border-gray-700'}`}>
+                                             {p.result}
+                                         </span>
+                                     </div>
+                                     <div className="flex gap-4 text-xs text-gray-400">
+                                         <span className="flex items-center gap-1"><Calendar size={12}/> {p.date}</span>
+                                         <span className="flex items-center gap-1"><MapPin size={12}/> {p.location || "N/A"}</span>
+                                         <span className="flex items-center gap-1"><Trophy size={12}/> {p.level}</span>
+                                     </div>
+                                 </div>
+                             </div>
+                         ))}
+                     </div>
+                 ) : (
+                     <div className="text-center text-gray-500 py-12">No tournaments added yet.</div>
+                 )}
+             </div>
            ) : (
              /* --- PERSONAL INFO PREVIEW --- */
              <div className="p-8 flex flex-col md:flex-row gap-8 relative z-10">
-                {/* LEFT SIDE: PHOTO & SPORT BADGE */}
                 <div className="flex-shrink-0 flex flex-col items-center gap-4">
                    <div className="w-48 h-56 rounded-xl bg-gray-800 border-2 border-lime-500/30 overflow-hidden shadow-lg relative group">
                       {image ? <img src={image} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-gray-600"><ImageIcon size={32} /></div>}
@@ -244,7 +284,6 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
                    <div className="flex flex-col items-center gap-1 opacity-50"><span className="text-[10px] tracking-[0.2em] text-gray-400">ID: {Date.now().toString().slice(-8)}</span></div>
                 </div>
 
-                {/* RIGHT SIDE: DETAILS */}
                 <div className="flex-1 w-full">
                    <div className="border-b border-gray-800 pb-4 mb-6">
                       <h2 className="text-4xl font-black text-white uppercase italic tracking-tighter">{data.fullName || "PLAYER NAME"}</h2>

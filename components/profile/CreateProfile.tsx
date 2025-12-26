@@ -6,11 +6,12 @@ import ProfileFooter from "./ProfileFooter";
 import PersonalInfoTab from "./tabs/PersonalInfoTab";
 import SportsStatsTab from "./tabs/SportsStatsTab";
 import BioTab from "./tabs/BioTab";
+// 1. IMPORT NEW TAB
+import ParticipationTab from "./tabs/ParticipationTab";
 import PreviewModal from "./modals/PreviewModal";
 import IdentityModal from "./modals/IdentityModal";
 
 // --- Shared Types ---
-// Interface for individual sport stats
 export interface SportStatsData {
   matchesPlayed: string;
   wins: string;
@@ -19,14 +20,24 @@ export interface SportStatsData {
   [key: string]: string; // Allow dynamic keys
 }
 
+// --- NEW TYPE FOR PARTICIPATION ---
+export interface ParticipationRecord {
+    id: string; 
+    tournamentName: string;
+    level: string; // District, State, National
+    date: string;
+    location: string;
+    result: string; // Winner, Runner Up, Participant
+}
+
 export interface FormData {
   // Personal
   fullName: string; dob: string; 
-  sports: string[]; // CHANGED: Now an array for multiple sports
+  sports: string[]; // Array for multiple sports
   contactNo: string; countryCode: string; gender: string; email: string; nationality: string; address: string;
   // Physical
   height: string; weight: string; dominantHand: string; disability: string; disabilityDesc: string; wingspan: string; agilityRating: string;
-  // Stats (Nested Object: { "Cricket": { ... }, "Football": { ... } })
+  // Stats (Nested Object)
   sportStats: Record<string, SportStatsData>; 
   // Bio
   bio: string;
@@ -36,6 +47,8 @@ export interface FormData {
   weaknesses: string[];
   weaknessDescription: string; 
   socialLinks: { facebook: string; instagram: string; twitter: string; linkedin: string; };
+  // --- NEW FIELD ---
+  participations: ParticipationRecord[];
 }
 
 export interface Units { height: "cm" | "ft"; weight: "kg" | "lbs"; }
@@ -61,7 +74,9 @@ const CreateProfile = () => {
     strengthDescription: "", 
     weaknesses: [],
     weaknessDescription: "", 
-    socialLinks: { facebook: "", instagram: "", twitter: "", linkedin: "" }
+    socialLinks: { facebook: "", instagram: "", twitter: "", linkedin: "" },
+    // Initialize empty array for participations
+    participations: []
   });
   
   const [units, setUnits] = useState<Units>({ height: "cm", weight: "kg" });
@@ -86,14 +101,14 @@ const CreateProfile = () => {
       setFormData(prev => ({ ...prev, [fieldName]: newArray }));
   }
 
-  // --- NEW: Handle Nested Stats Update ---
+  // Handle Nested Stats Update
   const handleStatChange = (sport: string, field: string, value: string) => {
       setFormData(prev => ({
           ...prev,
           sportStats: {
               ...prev.sportStats,
               [sport]: {
-                  ...(prev.sportStats[sport] || {}), // Preserve existing stats for this sport
+                  ...(prev.sportStats[sport] || {}), 
                   [field]: value
               }
           }
@@ -107,6 +122,15 @@ const CreateProfile = () => {
   const handleUnitChange = (type: "height" | "weight", value: string) => {
     setUnits((prev) => ({ ...prev, [type]: value }));
   };
+
+  // --- NEW HANDLERS FOR PARTICIPATION ---
+  const handleAddParticipation = (record: ParticipationRecord) => {
+      setFormData(prev => ({ ...prev, participations: [...prev.participations, record] }));
+  }
+
+  const handleRemoveParticipation = (id: string) => {
+      setFormData(prev => ({ ...prev, participations: prev.participations.filter(p => p.id !== id) }));
+  }
 
   // --- Navigation Handlers ---
   const handleNext = () => {
@@ -210,6 +234,16 @@ const CreateProfile = () => {
                 handleChange={handleInputChange}
                 handleSocialChange={handleSocialChange}
                 handleArrayChange={handleArrayChange}
+                onPreview={() => setModals({ ...modals, preview: true })}
+                onNext={handleNext}
+                onPrevious={handlePrevious}
+              />
+            ) : activeTab === "PARTICIPATION" ? (
+              // --- RENDER PARTICIPATION TAB ---
+              <ParticipationTab 
+                participations={formData.participations}
+                onAdd={handleAddParticipation}
+                onRemove={handleRemoveParticipation}
                 onPreview={() => setModals({ ...modals, preview: true })}
                 onNext={handleNext}
                 onPrevious={handlePrevious}

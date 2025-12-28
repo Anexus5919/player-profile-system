@@ -6,8 +6,8 @@ import ProfileFooter from "./ProfileFooter";
 import PersonalInfoTab from "./tabs/PersonalInfoTab";
 import SportsStatsTab from "./tabs/SportsStatsTab";
 import BioTab from "./tabs/BioTab";
-// 1. IMPORT NEW TAB
 import ParticipationTab from "./tabs/ParticipationTab";
+import AchievementsTab from "./tabs/AchievementsTab";
 import PreviewModal from "./modals/PreviewModal";
 import IdentityModal from "./modals/IdentityModal";
 
@@ -17,38 +17,37 @@ export interface SportStatsData {
   wins: string;
   loss: string;
   draws: string;
-  [key: string]: string; // Allow dynamic keys
+  [key: string]: string;
 }
 
-// --- NEW TYPE FOR PARTICIPATION ---
 export interface ParticipationRecord {
     id: string; 
     tournamentName: string;
-    level: string; // District, State, National
+    level: string; 
     date: string;
     location: string;
-    result: string; // Winner, Runner Up, Participant
+    result: string;
+}
+
+export interface AchievementRecord {
+    id: string;
+    title: string;
+    organization: string;
+    date: string;
+    description: string;
+    certificateUrl: string | null;
+    certificateName: string | null;
 }
 
 export interface FormData {
-  // Personal
   fullName: string; dob: string; 
-  sports: string[]; // Array for multiple sports
+  sports: string[]; 
   contactNo: string; countryCode: string; gender: string; email: string; nationality: string; address: string;
-  // Physical
   height: string; weight: string; dominantHand: string; disability: string; disabilityDesc: string; wingspan: string; agilityRating: string;
-  // Stats (Nested Object)
   sportStats: Record<string, SportStatsData>; 
-  // Bio
-  bio: string;
-  languages: string[];
-  strengths: string[];
-  strengthDescription: string; 
-  weaknesses: string[];
-  weaknessDescription: string; 
-  socialLinks: { facebook: string; instagram: string; twitter: string; linkedin: string; };
-  // --- NEW FIELD ---
+  bio: string; languages: string[]; strengths: string[]; strengthDescription: string; weaknesses: string[]; weaknessDescription: string; socialLinks: { facebook: string; instagram: string; twitter: string; linkedin: string; };
   participations: ParticipationRecord[];
+  achievements: AchievementRecord[];
 }
 
 export interface Units { height: "cm" | "ft"; weight: "kg" | "lbs"; }
@@ -57,26 +56,16 @@ export interface IdentityFile { name: string; url: string; type: string; }
 const TABS = ["PERSONAL INFO", "SPORTS STATS", "BIO", "PARTICIPATION", "ACHIEVEMENTS", "MEDIA"];
 
 const CreateProfile = () => {
-  // --- Global State ---
   const [activeTab, setActiveTab] = useState("PERSONAL INFO");
   const [furthestStep, setFurthestStep] = useState(0); 
 
   const [formData, setFormData] = useState<FormData>({
-    fullName: "", dob: "", 
-    sports: [], // Start empty
-    contactNo: "", countryCode: "+91", gender: "", email: "", nationality: "Indian", address: "",
+    fullName: "", dob: "", sports: [], contactNo: "", countryCode: "+91", gender: "", email: "", nationality: "Indian", address: "",
     height: "", weight: "", dominantHand: "", disability: "No", disabilityDesc: "", wingspan: "", agilityRating: "",
-    // Nested Stats Object
     sportStats: {}, 
-    bio: "",
-    languages: [],
-    strengths: [],
-    strengthDescription: "", 
-    weaknesses: [],
-    weaknessDescription: "", 
-    socialLinks: { facebook: "", instagram: "", twitter: "", linkedin: "" },
-    // Initialize empty array for participations
-    participations: []
+    bio: "", languages: [], strengths: [], strengthDescription: "", weaknesses: [], weaknessDescription: "", socialLinks: { facebook: "", instagram: "", twitter: "", linkedin: "" },
+    participations: [],
+    achievements: []
   });
   
   const [units, setUnits] = useState<Units>({ height: "cm", weight: "kg" });
@@ -101,18 +90,8 @@ const CreateProfile = () => {
       setFormData(prev => ({ ...prev, [fieldName]: newArray }));
   }
 
-  // Handle Nested Stats Update
   const handleStatChange = (sport: string, field: string, value: string) => {
-      setFormData(prev => ({
-          ...prev,
-          sportStats: {
-              ...prev.sportStats,
-              [sport]: {
-                  ...(prev.sportStats[sport] || {}), 
-                  [field]: value
-              }
-          }
-      }));
+      setFormData(prev => ({ ...prev, sportStats: { ...prev.sportStats, [sport]: { ...(prev.sportStats[sport] || {}), [field]: value } } }));
   };
 
   const handleNationalityChange = (nationality: string, code: string) => {
@@ -123,16 +102,20 @@ const CreateProfile = () => {
     setUnits((prev) => ({ ...prev, [type]: value }));
   };
 
-  // --- NEW HANDLERS FOR PARTICIPATION ---
   const handleAddParticipation = (record: ParticipationRecord) => {
       setFormData(prev => ({ ...prev, participations: [...prev.participations, record] }));
   }
-
   const handleRemoveParticipation = (id: string) => {
       setFormData(prev => ({ ...prev, participations: prev.participations.filter(p => p.id !== id) }));
   }
 
-  // --- Navigation Handlers ---
+  const handleAddAchievement = (record: AchievementRecord) => {
+      setFormData(prev => ({ ...prev, achievements: [...prev.achievements, record] }));
+  }
+  const handleRemoveAchievement = (id: string) => {
+      setFormData(prev => ({ ...prev, achievements: prev.achievements.filter(a => a.id !== id) }));
+  }
+
   const handleNext = () => {
     const currentIndex = TABS.indexOf(activeTab);
     if (currentIndex < TABS.length - 1) {
@@ -153,35 +136,25 @@ const CreateProfile = () => {
 
   const handleTabClick = (tab: string) => {
       const targetIndex = TABS.indexOf(tab);
-      if (targetIndex <= furthestStep) {
-          setActiveTab(tab);
-      }
+      if (targetIndex <= furthestStep) { setActiveTab(tab); }
   };
 
-  // BMI Calculation
   useEffect(() => {
-    const h = parseFloat(formData.height);
-    const w = parseFloat(formData.weight);
+    const h = parseFloat(formData.height); const w = parseFloat(formData.weight);
     if (h > 0 && w > 0) {
-      let hM = units.height === "cm" ? h / 100 : h * 0.3048;
-      let wKg = units.weight === "kg" ? w : w * 0.453592;
+      let hM = units.height === "cm" ? h / 100 : h * 0.3048; let wKg = units.weight === "kg" ? w : w * 0.453592;
       const bmiVal = parseFloat((wKg / (hM * hM)).toFixed(1));
       let s = "Normal", c = "text-lime-500";
-      if (bmiVal < 18.5) { s = "Underweight"; c = "text-red-500"; }
-      else if (bmiVal >= 25 && bmiVal < 30) { s = "Overweight"; c = "text-yellow-500"; }
-      else if (bmiVal >= 30) { s = "Obesity"; c = "text-red-500"; }
+      if (bmiVal < 18.5) { s = "Underweight"; c = "text-red-500"; } else if (bmiVal >= 25 && bmiVal < 30) { s = "Overweight"; c = "text-yellow-500"; } else if (bmiVal >= 30) { s = "Obesity"; c = "text-red-500"; }
       setBmi({ value: bmiVal.toString(), status: s, color: c });
-    } else {
-      setBmi({ value: "", status: "", color: "text-gray-500" });
-    }
+    } else { setBmi({ value: "", status: "", color: "text-gray-500" }); }
   }, [formData.height, formData.weight, units]);
 
   const handleFile = (e: ChangeEvent<HTMLInputElement>, type: 'photo' | 'identity') => {
     if (e.target.files?.[0]) {
       const file = e.target.files[0];
       const url = URL.createObjectURL(file);
-      if (type === 'photo') setProfilePic(url);
-      else setIdentityFile({ name: file.name, url, type: file.type });
+      if (type === 'photo') setProfilePic(url); else setIdentityFile({ name: file.name, url, type: file.type });
     }
   };
 
@@ -204,14 +177,7 @@ const CreateProfile = () => {
               const isActive = activeTab === tab;
               const isAccessible = index <= furthestStep;
               return (
-                <button 
-                    key={tab} 
-                    onClick={() => handleTabClick(tab)} 
-                    disabled={!isAccessible}
-                    className={`px-6 py-4 text-xs md:text-sm font-bold tracking-wide transition-colors relative 
-                        ${isActive ? "text-lime-500" : isAccessible ? "text-gray-400 hover:text-gray-200 cursor-pointer" : "text-gray-700 cursor-not-allowed"}
-                    `}
-                >
+                <button key={tab} onClick={() => handleTabClick(tab)} disabled={!isAccessible} className={`px-6 py-4 text-xs md:text-sm font-bold tracking-wide transition-colors relative ${isActive ? "text-lime-500" : isAccessible ? "text-gray-400 hover:text-gray-200 cursor-pointer" : "text-gray-700 cursor-not-allowed"}`}>
                     {tab}
                     {isActive && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-lime-500" />}
                 </button>
@@ -221,41 +187,19 @@ const CreateProfile = () => {
 
           <form onSubmit={(e) => { e.preventDefault(); alert("Profile Submitted Successfully!"); }} className="p-6 md:p-8 lg:p-10">
             {activeTab === "PERSONAL INFO" ? (
-              <PersonalInfoTab 
-                formData={formData} handleChange={handleInputChange} handleUnitChange={handleUnitChange} handleNationalityChange={handleNationalityChange} handleArrayChange={handleArrayChange} units={units} bmi={bmi} profilePic={profilePic} identityFile={identityFile} onPhotoUpload={(e) => handleFile(e, 'photo')} onPhotoRemove={() => setProfilePic(null)} onIdentityUpload={(e) => handleFile(e, 'identity')} onIdentityPreview={() => setModals({ ...modals, identity: true })} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext}
-              />
+              <PersonalInfoTab formData={formData} handleChange={handleInputChange} handleUnitChange={handleUnitChange} handleNationalityChange={handleNationalityChange} handleArrayChange={handleArrayChange} units={units} bmi={bmi} profilePic={profilePic} identityFile={identityFile} onPhotoUpload={(e) => handleFile(e, 'photo')} onPhotoRemove={() => setProfilePic(null)} onIdentityUpload={(e) => handleFile(e, 'identity')} onIdentityPreview={() => setModals({ ...modals, identity: true })} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext} />
             ) : activeTab === "SPORTS STATS" ? (
-              <SportsStatsTab 
-                formData={formData} handleStatChange={handleStatChange} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext} onPrevious={handlePrevious}
-              />
+              <SportsStatsTab formData={formData} handleStatChange={handleStatChange} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext} onPrevious={handlePrevious} />
             ) : activeTab === "BIO" ? (
-              <BioTab 
-                formData={formData}
-                handleChange={handleInputChange}
-                handleSocialChange={handleSocialChange}
-                handleArrayChange={handleArrayChange}
-                onPreview={() => setModals({ ...modals, preview: true })}
-                onNext={handleNext}
-                onPrevious={handlePrevious}
-              />
+              <BioTab formData={formData} handleChange={handleInputChange} handleSocialChange={handleSocialChange} handleArrayChange={handleArrayChange} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext} onPrevious={handlePrevious} />
             ) : activeTab === "PARTICIPATION" ? (
-              // --- RENDER PARTICIPATION TAB ---
-              <ParticipationTab 
-                participations={formData.participations}
-                onAdd={handleAddParticipation}
-                onRemove={handleRemoveParticipation}
-                onPreview={() => setModals({ ...modals, preview: true })}
-                onNext={handleNext}
-                onPrevious={handlePrevious}
-              />
+              <ParticipationTab participations={formData.participations} onAdd={handleAddParticipation} onRemove={handleRemoveParticipation} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext} onPrevious={handlePrevious} />
+            ) : activeTab === "ACHIEVEMENTS" ? (
+              <AchievementsTab achievements={formData.achievements} onAdd={handleAddAchievement} onRemove={handleRemoveAchievement} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext} onPrevious={handlePrevious} />
             ) : (
               <div className="h-64 flex flex-col items-center justify-center text-gray-500 gap-6">
                   <p className="text-xl font-medium">Content for {activeTab} section coming soon...</p>
-                  {activeTab === "MEDIA" && (
-                      <div className="text-center">
-                          <button type="submit" className="px-10 py-2.5 rounded-md bg-gradient-to-r from-lime-600 to-lime-500 text-black font-bold hover:brightness-110 transition-all uppercase tracking-wide shadow-[0_0_15px_rgba(132,204,22,0.4)]">Submit Profile</button>
-                      </div>
-                  )}
+                  {activeTab === "MEDIA" && <div className="text-center"><button type="submit" className="px-10 py-2.5 rounded-md bg-gradient-to-r from-lime-600 to-lime-500 text-black font-bold hover:brightness-110 transition-all uppercase tracking-wide shadow-[0_0_15px_rgba(132,204,22,0.4)]">Submit Profile</button></div>}
                   <button type="button" onClick={handlePrevious} className="px-6 py-2 rounded-md bg-gray-800 text-gray-300 hover:text-white">Back</button>
               </div>
             )}

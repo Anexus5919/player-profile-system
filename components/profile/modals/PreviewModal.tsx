@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { X, Activity, Mail, Phone, ImageIcon, Quote, ThumbsUp, ThumbsDown, Linkedin, Facebook, Twitter, Instagram, Trophy, Calendar, MapPin, Medal, Award, Ribbon, Star, ExternalLink, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { FormData, Units, AchievementRecord } from "../CreateProfile";
+import { Crown } from "lucide-react";
+
 
 // --- CUSTOM INTERACTIVE SVG PIE CHART ---
 const PieChart = ({ wins, loss, draws }: { wins: number, loss: number, draws: number }) => {
@@ -53,7 +55,7 @@ const PieChart = ({ wins, loss, draws }: { wins: number, loss: number, draws: nu
 };
 
 // --- SINGLE ACHIEVEMENT ITEM COMPONENT ---
-// Uses props for expand state to allow parent to control "Accordion" behavior
+// Modified to support random/varied colors per card
 const AchievementItem = ({ 
     achievement, 
     index, 
@@ -66,12 +68,73 @@ const AchievementItem = ({
     onToggle: () => void; 
 }) => {
     
-    // Uniform Premium Styling for ALL cards
+    // Define a palette of premium neon colors
+    const colorPalettes = [
+        { // Yellow (Original)
+            main: "text-yellow-500",
+            bgSoft: "bg-yellow-500/10",
+            borderSoft: "border-yellow-500/20",
+            border: "border-yellow-500/50",
+            bar: "bg-yellow-500",
+            hoverText: "hover:text-black",
+            hoverBg: "hover:bg-yellow-500"
+        },
+        { // Cyan
+            main: "text-cyan-400",
+            bgSoft: "bg-cyan-400/10",
+            borderSoft: "border-cyan-400/20",
+            border: "border-cyan-400/50",
+            bar: "bg-cyan-400",
+            hoverText: "hover:text-black",
+            hoverBg: "hover:bg-cyan-400"
+        },
+        { // Purple
+            main: "text-purple-500",
+            bgSoft: "bg-purple-500/10",
+            borderSoft: "border-purple-500/20",
+            border: "border-purple-500/50",
+            bar: "bg-purple-500",
+            hoverText: "hover:text-white",
+            hoverBg: "hover:bg-purple-500"
+        },
+        { // Rose
+            main: "text-rose-500",
+            bgSoft: "bg-rose-500/10",
+            borderSoft: "border-rose-500/20",
+            border: "border-rose-500/50",
+            bar: "bg-rose-500",
+            hoverText: "hover:text-white",
+            hoverBg: "hover:bg-rose-500"
+        },
+        { // Emerald
+            main: "text-emerald-400",
+            bgSoft: "bg-emerald-400/10",
+            borderSoft: "border-emerald-400/20",
+            border: "border-emerald-400/50",
+            bar: "bg-emerald-400",
+            hoverText: "hover:text-black",
+            hoverBg: "hover:bg-emerald-400"
+        },
+        { // Orange
+            main: "text-orange-500",
+            bgSoft: "bg-orange-500/10",
+            borderSoft: "border-orange-500/20",
+            border: "border-orange-500/50",
+            bar: "bg-orange-500",
+            hoverText: "hover:text-black",
+            hoverBg: "hover:bg-orange-500"
+        }
+    ];
+
+    // Select color based on index to ensure consistency (won't flicker on re-render)
+    const activeColor = colorPalettes[index % colorPalettes.length];
+
+    // Uniform Premium Styling for ALL cards with Dynamic Color
     const theme = {
         bg: "bg-gradient-to-br from-[#1a1a1a] to-[#121212]",
-        border: isExpanded ? "border-yellow-500/50" : "border-gray-800",
-        iconBox: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-        title: isExpanded ? "text-yellow-500" : "text-white"
+        border: isExpanded ? activeColor.border : "border-gray-800",
+        iconBox: `${activeColor.bgSoft} ${activeColor.main} ${activeColor.borderSoft}`,
+        title: isExpanded ? activeColor.main : "text-white"
     };
 
     return (
@@ -83,11 +146,11 @@ const AchievementItem = ({
             `}
         >
             {/* Left Accent Bar */}
-            <div className={`absolute top-0 left-0 h-full w-1 transition-colors ${isExpanded ? 'bg-yellow-500' : 'bg-transparent group-hover:bg-gray-700'}`} />
+            <div className={`absolute top-0 left-0 h-full w-1 transition-colors ${isExpanded ? activeColor.bar : 'bg-transparent group-hover:bg-gray-700'}`} />
 
-            {/* Latest Badge */}
+            {/* Latest Badge - Dynamic Color */}
             {index === 0 && (
-                <div className="absolute top-0 right-0 bg-yellow-500/20 text-yellow-500 text-[9px] font-black px-2 py-1 rounded-bl-lg uppercase tracking-widest border-l border-b border-yellow-500/20">
+                <div className={`absolute top-0 right-0 ${activeColor.bgSoft} ${activeColor.main} text-[9px] font-black px-2 py-1 rounded-bl-lg uppercase tracking-widest border-l border-b ${activeColor.borderSoft}`}>
                     Latest
                 </div>
             )}
@@ -104,7 +167,7 @@ const AchievementItem = ({
                             {achievement.title}
                         </h4>
                         {/* Chevron */}
-                        <div className={`shrink-0 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-yellow-500' : 'text-gray-600'}`}>
+                        <div className={`shrink-0 transition-transform duration-300 ${isExpanded ? `rotate-180 ${activeColor.main}` : 'text-gray-600'}`}>
                             <ChevronDown size={18} />
                         </div>
                     </div>
@@ -124,7 +187,7 @@ const AchievementItem = ({
                             {/* Footer Actions */}
                             <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-gray-800/50">
                                 <div className="flex items-center gap-2 text-xs text-gray-400 font-mono">
-                                    <Calendar size={12} className="text-yellow-500" /> {achievement.date}
+                                    <Calendar size={12} className={activeColor.main} /> {achievement.date}
                                 </div>
                                 {achievement.certificateUrl && (
                                     <a 
@@ -132,7 +195,7 @@ const AchievementItem = ({
                                         target="_blank" 
                                         rel="noopener noreferrer"
                                         onClick={(e) => e.stopPropagation()} 
-                                        className="flex items-center gap-2 text-xs font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/50 px-3 py-1.5 rounded-md hover:bg-yellow-500 hover:text-black transition-all"
+                                        className={`flex items-center gap-2 text-xs font-bold ${activeColor.bgSoft} ${activeColor.main} border ${activeColor.border} px-3 py-1.5 rounded-md ${activeColor.hoverBg} ${activeColor.hoverText} transition-all`}
                                     >
                                         <ExternalLink size={14}/> View Certificate
                                     </a>
@@ -218,12 +281,39 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
            {activeTab === "ACHIEVEMENTS" ? (
                // --- ACHIEVEMENTS PREVIEW (Accordion Stack) ---
                <div className="p-8 relative z-10">
-                   <div className="flex items-center justify-between mb-8">
-                       <div className="flex items-center gap-3">
-                           <div className="bg-yellow-500/10 p-3 rounded-full text-yellow-500"><Trophy size={24} /></div>
-                           <div><h2 className="text-xl font-black text-white uppercase italic tracking-tighter">Hall of Fame</h2><p className="text-xs text-gray-500 font-medium">Total Awards: {sortedAchievements.length}</p></div>
-                       </div>
-                   </div>
+                   <div className="mb-8">
+  <div className="flex items-center justify-between rounded-xl border border-gray-800 bg-gradient-to-r from-[#151515] to-[#0f0f0f] px-6 py-4">
+    
+    {/* Left Section */}
+    <div className="flex items-center gap-4">
+      <div className="w-12 h-12 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-500">
+        <Crown size={20} strokeWidth={1.8} />
+      </div>
+
+      <div>
+        <h2 className="text-lg font-black uppercase tracking-wide text-white">
+          Hall of Fame
+        </h2>
+        <p className="text-xs text-gray-500 font-medium">
+          Total Awards: {sortedAchievements.length}
+        </p>
+      </div>
+    </div>
+
+    {/* Right Section */}
+    {sortedAchievements[0]?.date && (
+      <div className="text-right">
+        <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
+          Latest Win
+        </p>
+        <p className="text-sm font-bold text-lime-500">
+          {sortedAchievements[0].date}
+        </p>
+      </div>
+    )}
+  </div>
+</div>
+
                    
                    {sortedAchievements.length > 0 ? (
                        <div className="flex flex-col gap-3">

@@ -42,6 +42,8 @@ const AchievementsTab: React.FC<Props> = ({ achievements, onAdd, onRemove, onPre
       setNewEntry(record);
       setEditingId(record.id);
       setIsAdding(true);
+      // Remove old record immediately to avoid duplication on save? 
+      // Better: Keep it until save. But for this simple implementation, we remove it here so it feels like "editing in place".
       onRemove(record.id);
   };
 
@@ -60,7 +62,9 @@ const AchievementsTab: React.FC<Props> = ({ achievements, onAdd, onRemove, onPre
   };
 
   const handleCancel = () => {
+      // If we were editing, put the record back
       if (editingId) onAdd(newEntry);
+      
       setNewEntry({ id: "", title: "", organization: "", date: "", description: "", certificateUrl: null, certificateName: null });
       setIsAdding(false);
       setEditingId(null);

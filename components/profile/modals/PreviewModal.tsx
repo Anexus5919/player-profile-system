@@ -1,102 +1,151 @@
 import React, { useState } from "react";
-import { X, Activity, Mail, Phone, ImageIcon, Quote, ThumbsUp, ThumbsDown, Linkedin, Facebook, Twitter, Instagram, Trophy, Calendar, MapPin, Medal, Award, Ribbon, Star, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Activity, Mail, Phone, ImageIcon, Quote, ThumbsUp, ThumbsDown, Linkedin, Facebook, Twitter, Instagram, Trophy, Calendar, MapPin, Medal, Award, Ribbon, Star, ExternalLink, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { FormData, Units, AchievementRecord } from "../CreateProfile";
 
-// --- CUSTOM INTERACTIVE SVG PIE CHART (Unchanged) ---
+// --- CUSTOM INTERACTIVE SVG PIE CHART ---
 const PieChart = ({ wins, loss, draws }: { wins: number, loss: number, draws: number }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tooltipData, setTooltipData] = useState<{ label: string; value: number; percent: string; color: string } | null>(null);
+  
   const total = wins + loss + draws;
   if (total === 0) return <div className="w-64 h-64 rounded-full border-4 border-gray-800 flex items-center justify-center text-xs text-gray-600 bg-[#0a0a0a]">No Data</div>;
+
   let cumPercent = 0;
-  const getCoordinatesForPercent = (percent: number) => { const x = Math.cos(2 * Math.PI * percent); const y = Math.sin(2 * Math.PI * percent); return [x, y]; };
-  const slices = [ { label: "Wins", value: wins, color: "#84cc16" }, { label: "Loss", value: loss, color: "#ef4444" }, { label: "Draws", value: draws, color: "#eab308" } ].filter(s => s.value > 0);
+  
+  const getCoordinatesForPercent = (percent: number) => {
+    const x = Math.cos(2 * Math.PI * percent);
+    const y = Math.sin(2 * Math.PI * percent);
+    return [x, y];
+  };
+
+  const slices = [
+    { label: "Wins", value: wins, color: "#84cc16" }, 
+    { label: "Loss", value: loss, color: "#ef4444" }, 
+    { label: "Draws", value: draws, color: "#eab308" }, 
+  ].filter(s => s.value > 0);
+
   return (
     <div className="relative w-64 h-64 flex items-center justify-center">
       <svg viewBox="-1.2 -1.2 2.4 2.4" className="transform -rotate-90 w-full h-full drop-shadow-2xl">
         {slices.map((slice, i) => {
-          const start = getCoordinatesForPercent(cumPercent); const slicePercent = slice.value / total; cumPercent += slicePercent; const end = getCoordinatesForPercent(cumPercent); const largeArcFlag = slicePercent > 0.5 ? 1 : 0; const pathData = `M 0 0 L ${start[0]} ${start[1]} A 1 1 0 ${largeArcFlag} 1 ${end[0]} ${end[1]} L 0 0`;
-          return <path key={i} d={pathData} fill={slice.color} stroke="#121212" strokeWidth="0.02" className="cursor-pointer transition-all hover:brightness-110" style={{ opacity: hoveredIndex !== null && hoveredIndex !== i ? 0.7 : 1 }} onMouseEnter={() => { setHoveredIndex(i); setTooltipData({ label: slice.label, value: slice.value, percent: (slicePercent * 100).toFixed(1), color: slice.color }); }} onMouseLeave={() => { setHoveredIndex(null); setTooltipData(null); }} />;
+          const start = getCoordinatesForPercent(cumPercent);
+          const slicePercent = slice.value / total;
+          cumPercent += slicePercent;
+          const end = getCoordinatesForPercent(cumPercent);
+          const largeArcFlag = slicePercent > 0.5 ? 1 : 0;
+          const pathData = `M 0 0 L ${start[0]} ${start[1]} A 1 1 0 ${largeArcFlag} 1 ${end[0]} ${end[1]} L 0 0`;
+          const isHovered = hoveredIndex === i;
+          return (
+            <path key={i} d={pathData} fill={slice.color} stroke="#121212" strokeWidth="0.02" className={`cursor-pointer transition-all duration-200 ${isHovered ? 'brightness-125' : 'hover:brightness-110'} `} style={{ opacity: hoveredIndex !== null && !isHovered ? 0.7 : 1 }} onMouseEnter={() => { setHoveredIndex(i); setTooltipData({ label: slice.label, value: slice.value, percent: (slicePercent * 100).toFixed(1), color: slice.color }); }} onMouseLeave={() => { setHoveredIndex(null); setTooltipData(null); }} />
+          );
         })}
         <circle cx="0" cy="0" r="0.6" fill="#121212" />
       </svg>
-      {tooltipData && <div className="absolute top-0 -right-16 z-20 bg-[#1a1a1a] p-3 rounded-lg border border-gray-700 shadow-2xl"><div className="flex items-center gap-2 mb-1"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: tooltipData.color }}></div><span className="text-[10px] text-gray-400 uppercase font-bold">{tooltipData.label}</span></div><span className="text-xl font-black text-white">{tooltipData.value}</span></div>}
+      {tooltipData && (
+          <div className="absolute top-0 -right-16 z-20 bg-[#1a1a1a] p-3 rounded-lg border border-gray-700 shadow-2xl animate-in fade-in slide-in-from-left-2 duration-200 min-w-[100px]">
+              <div className="flex items-center gap-2 mb-1"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: tooltipData.color }}></div><span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">{tooltipData.label}</span></div>
+              <div className="flex items-baseline gap-1"><span className="text-xl font-black text-white">{tooltipData.value}</span><span className="text-xs text-gray-500">matches</span></div>
+              <div className="mt-1 pt-1 border-t border-gray-800"><span className="text-xs font-bold" style={{ color: tooltipData.color }}>{tooltipData.percent}%</span></div>
+          </div>
+      )}
     </div>
   );
 };
 
-// --- EXPANDABLE ACHIEVEMENT CARD ---
-const AchievementCard = ({ achievement, index }: { achievement: AchievementRecord; index: number }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
+// --- SINGLE ACHIEVEMENT ITEM COMPONENT ---
+// Uses props for expand state to allow parent to control "Accordion" behavior
+const AchievementItem = ({ 
+    achievement, 
+    index, 
+    isExpanded, 
+    onToggle 
+}: { 
+    achievement: AchievementRecord; 
+    index: number; 
+    isExpanded: boolean; 
+    onToggle: () => void; 
+}) => {
     
-    // Determine visual style based on index (Gold, Silver, Bronze, etc.)
-    let iconColor = "text-blue-400";
-    let bgStyle = "bg-blue-500/10 border-blue-500/20";
-    let Icon = Trophy;
-
-    if (index === 0) { iconColor = "text-yellow-400"; bgStyle = "bg-yellow-500/10 border-yellow-500/30"; Icon = Trophy; }
-    else if (index === 1) { iconColor = "text-gray-300"; bgStyle = "bg-gray-500/10 border-gray-500/30"; Icon = Medal; }
-    else if (index === 2) { iconColor = "text-orange-400"; bgStyle = "bg-orange-500/10 border-orange-500/30"; Icon = Medal; }
-    else { iconColor = "text-purple-400"; bgStyle = "bg-purple-500/10 border-purple-500/30"; Icon = Award; }
+    // Uniform Premium Styling for ALL cards
+    const theme = {
+        bg: "bg-gradient-to-br from-[#1a1a1a] to-[#121212]",
+        border: isExpanded ? "border-yellow-500/50" : "border-gray-800",
+        iconBox: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+        title: isExpanded ? "text-yellow-500" : "text-white"
+    };
 
     return (
         <div 
-            onClick={() => setIsExpanded(!isExpanded)}
-            className={`relative p-5 rounded-xl border transition-all cursor-pointer group hover:scale-[1.01] ${isExpanded ? 'bg-[#151515] border-gray-600' : 'bg-[#1a1a1a] border-gray-800 hover:border-gray-700'}`}
+            onClick={onToggle}
+            className={`
+                relative rounded-xl border transition-all duration-300 cursor-pointer group overflow-hidden
+                ${theme.bg} ${theme.border} ${isExpanded ? 'shadow-lg shadow-black/50' : 'hover:border-gray-600'}
+            `}
         >
-            {/* Top Badge for Latest */}
+            {/* Left Accent Bar */}
+            <div className={`absolute top-0 left-0 h-full w-1 transition-colors ${isExpanded ? 'bg-yellow-500' : 'bg-transparent group-hover:bg-gray-700'}`} />
+
+            {/* Latest Badge */}
             {index === 0 && (
-                <div className="absolute -top-2.5 -right-2.5 bg-gradient-to-r from-yellow-600 to-yellow-400 text-black text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg flex items-center gap-1 z-10">
-                    Latest <Star size={10} fill="black" />
+                <div className="absolute top-0 right-0 bg-yellow-500/20 text-yellow-500 text-[9px] font-black px-2 py-1 rounded-bl-lg uppercase tracking-widest border-l border-b border-yellow-500/20">
+                    Latest
                 </div>
             )}
 
-            <div className="flex items-start gap-4">
-                {/* Icon Box */}
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl shrink-0 border ${bgStyle} ${iconColor}`}>
-                    <Icon size={24} />
+            <div className="p-5 flex items-start gap-4">
+                {/* Icon */}
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-xl shrink-0 border ${theme.iconBox}`}>
+                    <Trophy size={22} strokeWidth={1.5} />
                 </div>
 
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
-                        <h4 className={`font-bold text-base leading-tight pr-6 ${index === 0 ? 'text-white' : 'text-gray-200'}`}>
+                        <h4 className={`font-bold text-base leading-tight pr-8 transition-colors ${theme.title}`}>
                             {achievement.title}
                         </h4>
-                        {isExpanded ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
+                        {/* Chevron */}
+                        <div className={`shrink-0 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-yellow-500' : 'text-gray-600'}`}>
+                            <ChevronDown size={18} />
+                        </div>
                     </div>
                     
-                    <p className="text-lime-500 text-xs font-bold mt-1 uppercase tracking-wide">{achievement.organization}</p>
-                    
-                    {/* Collapsed Description */}
-                    {!isExpanded && (
-                        <p className="text-gray-400 text-xs mt-2 leading-relaxed line-clamp-2">
-                            {achievement.description || "No description provided."}
-                        </p>
-                    )}
+                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wide mt-1 truncate">
+                        {achievement.organization}
+                    </p>
 
-                    {/* Expanded Content */}
-                    {isExpanded && (
-                        <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                            <div className="text-gray-300 text-sm leading-relaxed max-h-40 overflow-y-auto pr-2 custom-scrollbar border-l-2 border-gray-800 pl-3">
-                                {achievement.description || "No additional details provided."}
+                    {/* Content Area */}
+                    <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-4' : 'grid-rows-[0fr] opacity-50 mt-0'}`}>
+                        <div className="overflow-hidden">
+                            {/* Scrollable Description */}
+                            <div className="text-sm text-gray-300 leading-relaxed max-h-32 overflow-y-auto pr-2 custom-scrollbar border-l-2 border-gray-800 pl-3">
+                                {achievement.description || "No detailed description provided."}
                             </div>
-                            
-                            <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-gray-800">
-                                <div className="flex items-center gap-2 text-[10px] text-gray-500 font-mono bg-black/30 px-2 py-1 rounded">
-                                    <Calendar size={12} /> {achievement.date}
+
+                            {/* Footer Actions */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-gray-800/50">
+                                <div className="flex items-center gap-2 text-xs text-gray-400 font-mono">
+                                    <Calendar size={12} className="text-yellow-500" /> {achievement.date}
                                 </div>
                                 {achievement.certificateUrl && (
                                     <a 
                                         href={achievement.certificateUrl} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()} // Prevent card collapse
-                                        className="flex items-center gap-2 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md transition-colors shadow-lg shadow-blue-900/20"
+                                        onClick={(e) => e.stopPropagation()} 
+                                        className="flex items-center gap-2 text-xs font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/50 px-3 py-1.5 rounded-md hover:bg-yellow-500 hover:text-black transition-all"
                                     >
                                         <ExternalLink size={14}/> View Certificate
                                     </a>
                                 )}
                             </div>
+                        </div>
+                    </div>
+                    
+                    {/* Collapsed Hints */}
+                    {!isExpanded && (
+                        <div className="mt-2 text-xs text-gray-600 truncate flex items-center gap-2">
+                            <span><Calendar size={10} className="inline mb-0.5"/> {achievement.date}</span>
+                            {achievement.certificateUrl && <span className="flex items-center gap-1"><FileText size={10}/> Cert Available</span>}
                         </div>
                     )}
                 </div>
@@ -115,12 +164,15 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
   if (!isOpen) return null;
 
   const [selectedSport, setSelectedSport] = useState(data.sports.length > 0 ? data.sports[0] : "");
+  // Accordion state for Achievements
+  const [expandedAchievementId, setExpandedAchievementId] = useState<string | null>(null);
+
   const calculateAge = (dob: string) => { if (!dob) return "N/A"; return Math.abs(new Date(Date.now() - new Date(dob).getTime()).getUTCFullYear() - 1970); };
   
   const getTitle = () => {
       switch(activeTab) {
           case "PARTICIPATION": return "Career Timeline";
-          case "ACHIEVEMENTS": return "Hall of Fame";
+          case "ACHIEVEMENTS": return "Trophy Cabinet";
           case "BIO": return "Scout Report";
           default: return "Player Card";
       }
@@ -138,6 +190,8 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
       switch (result) {
           case 'Winner': return <Trophy size={14} className="text-yellow-500" />;
           case 'Runner Up': return <Medal size={14} className="text-gray-300" />;
+          case 'Semi-Finalist': return <Medal size={14} className="text-orange-400" />;
+          case 'Quarter-Finalist': return <Award size={14} className="text-blue-400" />;
           default: return <Ribbon size={14} className="text-gray-500" />;
       }
   };
@@ -146,6 +200,11 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
   const sortedAchievements = [...data.achievements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const currentStats = data.sportStats[selectedSport] || {};
   const extraStats = getSportSpecificStats(selectedSport);
+
+  // Toggle Logic for Accordion
+  const toggleAchievement = (id: string) => {
+      setExpandedAchievementId(prev => prev === id ? null : id);
+  }
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
@@ -157,16 +216,28 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
            <div className="absolute top-[-50px] right-[-50px] opacity-[0.03] pointer-events-none rotate-12"><img src="/logo.svg" className="w-96 h-96" /></div>
 
            {activeTab === "ACHIEVEMENTS" ? (
-               // --- ACHIEVEMENTS PREVIEW (Trophy Cabinet) ---
+               // --- ACHIEVEMENTS PREVIEW (Accordion Stack) ---
                <div className="p-8 relative z-10">
-                   <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-8 text-center flex items-center justify-center gap-3"><Trophy size={32} className="text-yellow-500" /> Hall of Fame</h2>
+                   <div className="flex items-center justify-between mb-8">
+                       <div className="flex items-center gap-3">
+                           <div className="bg-yellow-500/10 p-3 rounded-full text-yellow-500"><Trophy size={24} /></div>
+                           <div><h2 className="text-xl font-black text-white uppercase italic tracking-tighter">Hall of Fame</h2><p className="text-xs text-gray-500 font-medium">Total Awards: {sortedAchievements.length}</p></div>
+                       </div>
+                   </div>
+                   
                    {sortedAchievements.length > 0 ? (
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div className="flex flex-col gap-3">
                            {sortedAchievements.map((a, i) => (
-                               <AchievementCard key={a.id} achievement={a} index={i} />
+                               <AchievementItem 
+                                   key={a.id} 
+                                   achievement={a} 
+                                   index={i} 
+                                   isExpanded={expandedAchievementId === a.id}
+                                   onToggle={() => toggleAchievement(a.id)}
+                               />
                            ))}
                        </div>
-                   ) : <div className="text-center text-gray-500 py-12">No achievements to display.</div>}
+                   ) : <div className="text-center text-gray-500 py-12">No achievements listed yet.</div>}
                </div>
            ) : activeTab === "PARTICIPATION" ? (
                // --- PARTICIPATION PREVIEW ---
@@ -176,9 +247,9 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
                        <div className="relative border-l-2 border-gray-800 ml-4 space-y-8">
                            {sortedParticipations.map((p, i) => (
                                <div key={i} className="relative pl-8">
-                                   <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 ${p.result === 'Winner' ? 'bg-yellow-500 border-yellow-500' : 'bg-[#121212] border-gray-600'}`}></div>
-                                   <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
-                                       <div className="flex justify-between items-start mb-2"><h4 className="text-white font-bold text-lg">{p.tournamentName}</h4><span className="text-[10px] font-bold uppercase px-2 py-1 rounded border bg-gray-800 border-gray-700 flex items-center gap-1">{getResultIcon(p.result)} {p.result}</span></div>
+                                   <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 ${p.result === 'Winner' ? 'bg-yellow-500 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]' : p.result === 'Runner Up' ? 'bg-gray-400 border-gray-400' : 'bg-[#121212] border-gray-600'}`}></div>
+                                   <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800 hover:border-gray-600 transition-colors">
+                                       <div className="flex justify-between items-start mb-2"><h4 className="text-white font-bold text-lg">{p.tournamentName}</h4><span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border flex items-center gap-1 ${p.result === 'Winner' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : p.result === 'Runner Up' ? 'bg-gray-400/10 text-gray-300 border-gray-400/20' : 'bg-gray-800 text-gray-500 border-gray-700'}`}>{getResultIcon(p.result)} {p.result}</span></div>
                                        <div className="flex gap-4 text-xs text-gray-400"><span className="flex items-center gap-1"><Calendar size={12}/> {p.date}</span><span className="flex items-center gap-1"><MapPin size={12}/> {p.location || "N/A"}</span></div>
                                    </div>
                                </div>

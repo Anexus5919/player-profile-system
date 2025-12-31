@@ -40,9 +40,17 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <div className="relative w-full max-w-md">
-        <Card className="relative overflow-hidden border-0 shadow-2xl">
+    <div
+      className="min-h-screen bg-cover bg-center bg-no-repeat flex items-center p-4"
+      style={{ backgroundImage: "url('/background.svg')" }}
+    >
+      {/* Overlay for better text readability */}
+      <div className="absolute inset-0 bg-black/40"></div>
+
+  <div className="relative z-10 flex items-center justify-center w-full">
+    <div className="w-full max-w-lg mr-auto ml-8 lg:ml-16 xl:ml-24">
+      <Card className="relative overflow-hidden border-0 shadow-2xl bg-slate-900/85 backdrop-blur-lg">
+
           <BorderBeam
             size={300}
             duration={8}
@@ -163,6 +171,7 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   )

@@ -1,8 +1,6 @@
 import React, { useState } from "react";
-import { X, Activity, Mail, Phone, ImageIcon, Quote, ThumbsUp, ThumbsDown, Linkedin, Facebook, Twitter, Instagram, Trophy, Calendar, MapPin, Medal, Award, Ribbon, Star, ExternalLink, ChevronDown, ChevronUp, FileText } from "lucide-react";
-import { FormData, Units, AchievementRecord } from "../CreateProfile";
-import { Crown } from "lucide-react";
-
+import { X, Activity, Mail, Phone, ImageIcon, Quote, ThumbsUp, ThumbsDown, Linkedin, Facebook, Twitter, Instagram, Trophy, Calendar, MapPin, Medal, Award, Ribbon, Star, ExternalLink, ChevronDown, ChevronUp, FileText, Crown, Play, Film, Camera } from "lucide-react";
+import { FormData, Units, AchievementRecord, MediaItem } from "../CreateProfile";
 
 // --- CUSTOM INTERACTIVE SVG PIE CHART ---
 const PieChart = ({ wins, loss, draws }: { wins: number, loss: number, draws: number }) => {
@@ -217,6 +215,35 @@ const AchievementItem = ({
     );
 };
 
+// --- MEDIA GALLERY HELPER ---
+const MediaGallery = ({ items }: { items: MediaItem[] }) => {
+    if (!items || items.length === 0) return null;
+    const images = items.filter(m => m.type === 'image');
+    const videos = items.filter(m => m.type === 'video');
+    const certs = items.filter(m => m.type === 'certificate');
+
+    return (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3">
+            {images.map(img => (
+                <div key={img.id} className="relative rounded-lg overflow-hidden border border-gray-800 aspect-video group">
+                    <img src={img.url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                </div>
+            ))}
+            {videos.map(vid => (
+                <div key={vid.id} className="bg-[#1a1a1a] rounded-lg border border-gray-800 flex items-center justify-center aspect-video group cursor-pointer hover:border-red-900/50">
+                    <Play size={24} className="text-gray-500 group-hover:text-red-500 transition-colors" />
+                </div>
+            ))}
+            {certs.map(cert => (
+                <div key={cert.id} className="bg-[#1a1a1a] rounded-lg border border-gray-800 flex items-center gap-2 p-3 aspect-video">
+                    <FileText size={16} className="text-yellow-500" />
+                    <span className="text-[10px] text-gray-400 truncate">{cert.caption}</span>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 // --- MAIN PREVIEW COMPONENT ---
 interface Props {
   isOpen: boolean; onClose: () => void;
@@ -237,9 +264,15 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
           case "PARTICIPATION": return "Career Timeline";
           case "ACHIEVEMENTS": return "Trophy Cabinet";
           case "BIO": return "Scout Report";
+          case "MEDIA": return "Player Showcase"; // NEW TITLE FOR MEDIA
           default: return "Player Card";
       }
   }
+
+  // Filter media
+  const images = data.media?.filter(m => m.type === 'image') || [];
+  const videos = data.media?.filter(m => m.type === 'video') || [];
+  const certs = data.media?.filter(m => m.type === 'certificate') || [];
 
   // --- Helpers ---
   const getSportSpecificStats = (sport: string) => {
@@ -278,42 +311,85 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
            <div className="h-2 w-full bg-gradient-to-r from-lime-600 via-lime-400 to-lime-600 sticky top-0 z-20"></div>
            <div className="absolute top-[-50px] right-[-50px] opacity-[0.03] pointer-events-none rotate-12"><img src="/logo.svg" className="w-96 h-96" /></div>
 
-           {activeTab === "ACHIEVEMENTS" ? (
+           {/* --- MEDIA PREVIEW (NEW) --- */}
+           {activeTab === "MEDIA" ? (
+               <div className="p-8 relative z-10 space-y-12">
+                   
+                   {/* 1. General Journey */}
+                   {(data.playerJourney || (data.media && data.media.length > 0)) && (
+                       <div>
+                           <div className="flex items-center gap-3 mb-4">
+                               <div className="bg-lime-500/10 p-2 rounded-lg text-lime-500"><Quote size={20}/></div>
+                               <h3 className="text-white font-bold uppercase tracking-wider">My Journey</h3>
+                           </div>
+                           {data.playerJourney && <p className="text-gray-300 leading-relaxed italic border-l-2 border-lime-500/50 pl-4">{data.playerJourney}</p>}
+                           <MediaGallery items={data.media} />
+                       </div>
+                   )}
+
+                   {/* 2. Event Timeline Stories */}
+                   <div className="relative border-l-2 border-gray-800 ml-3 space-y-10">
+                       {sortedParticipations.filter(p => p.story || (p.media && p.media.length > 0)).map((p, i) => (
+                           <div key={p.id} className="relative pl-8">
+                               <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 bg-[#121212] border-gray-600"></div>
+                               
+                               <div className="mb-2">
+                                   <h4 className="text-white font-bold text-lg">{p.tournamentName}</h4>
+                                   <div className="flex gap-3 text-xs text-gray-500">
+                                       <span className="flex items-center gap-1"><Calendar size={12}/> {p.date}</span>
+                                       <span className="flex items-center gap-1 text-lime-500">{p.result}</span>
+                                   </div>
+                               </div>
+
+                               {p.story && <p className="text-sm text-gray-400 leading-relaxed mb-3">{p.story}</p>}
+                               {p.media && <MediaGallery items={p.media} />}
+                           </div>
+                       ))}
+                   </div>
+
+                   {/* Empty State */}
+                   {(!data.playerJourney && (!data.media || data.media.length === 0) && !sortedParticipations.some(p => p.story || (p.media && p.media.length > 0))) && (
+                       <div className="text-center py-20 opacity-30">
+                           <ImageIcon size={48} className="mx-auto mb-2"/>
+                           <p>No media or stories shared yet.</p>
+                       </div>
+                   )}
+               </div>
+           ) : activeTab === "ACHIEVEMENTS" ? (
                // --- ACHIEVEMENTS PREVIEW (Accordion Stack) ---
                <div className="p-8 relative z-10">
                    <div className="mb-8">
-  <div className="flex items-center justify-between rounded-xl border border-gray-800 bg-gradient-to-r from-[#151515] to-[#0f0f0f] px-6 py-4">
-    
-    {/* Left Section */}
-    <div className="flex items-center gap-4">
-      <div className="w-12 h-12 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-500">
-        <Crown size={20} strokeWidth={1.8} />
-      </div>
+                      <div className="flex items-center justify-between rounded-xl border border-gray-800 bg-gradient-to-r from-[#151515] to-[#0f0f0f] px-6 py-4">
+                        
+                        {/* Left Section */}
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-500">
+                            <Crown size={20} strokeWidth={1.8} />
+                          </div>
 
-      <div>
-        <h2 className="text-lg font-black uppercase tracking-wide text-white">
-          Hall of Fame
-        </h2>
-        <p className="text-xs text-gray-500 font-medium">
-          Total Awards: {sortedAchievements.length}
-        </p>
-      </div>
-    </div>
+                          <div>
+                            <h2 className="text-lg font-black uppercase tracking-wide text-white">
+                              Hall of Fame
+                            </h2>
+                            <p className="text-xs text-gray-500 font-medium">
+                              Total Awards: {sortedAchievements.length}
+                            </p>
+                          </div>
+                        </div>
 
-    {/* Right Section */}
-    {sortedAchievements[0]?.date && (
-      <div className="text-right">
-        <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
-          Latest Win
-        </p>
-        <p className="text-sm font-bold text-lime-500">
-          {sortedAchievements[0].date}
-        </p>
-      </div>
-    )}
-  </div>
-</div>
-
+                        {/* Right Section */}
+                        {sortedAchievements[0]?.date && (
+                          <div className="text-right">
+                            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
+                              Latest Win
+                            </p>
+                            <p className="text-sm font-bold text-lime-500">
+                              {sortedAchievements[0].date}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                   </div>
                    
                    {sortedAchievements.length > 0 ? (
                        <div className="flex flex-col gap-3">

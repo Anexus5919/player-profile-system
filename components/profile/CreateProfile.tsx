@@ -8,6 +8,7 @@ import SportsStatsTab from "./tabs/SportsStatsTab";
 import BioTab from "./tabs/BioTab";
 import ParticipationTab from "./tabs/ParticipationTab";
 import AchievementsTab from "./tabs/AchievementsTab";
+import MediaTab from "./tabs/MediaTab"; // Ensure this import exists
 import PreviewModal from "./modals/PreviewModal";
 import IdentityModal from "./modals/IdentityModal";
 
@@ -20,6 +21,13 @@ export interface SportStatsData {
   [key: string]: string;
 }
 
+export interface MediaItem {
+    id: string;
+    type: 'image' | 'video' | 'certificate';
+    url: string;
+    caption?: string;
+}
+
 export interface ParticipationRecord {
     id: string; 
     tournamentName: string;
@@ -27,6 +35,9 @@ export interface ParticipationRecord {
     date: string;
     location: string;
     result: string;
+    // NEW: Event-specific Media & Story
+    story?: string;
+    media?: MediaItem[];
 }
 
 export interface AchievementRecord {
@@ -48,6 +59,10 @@ export interface FormData {
   bio: string; languages: string[]; strengths: string[]; strengthDescription: string; weaknesses: string[]; weaknessDescription: string; socialLinks: { facebook: string; instagram: string; twitter: string; linkedin: string; };
   participations: ParticipationRecord[];
   achievements: AchievementRecord[];
+  
+  // General Media (Profile Highlights)
+  media: MediaItem[];
+  playerJourney: string;
 }
 
 export interface Units { height: "cm" | "ft"; weight: "kg" | "lbs"; }
@@ -65,7 +80,9 @@ const CreateProfile = () => {
     sportStats: {}, 
     bio: "", languages: [], strengths: [], strengthDescription: "", weaknesses: [], weaknessDescription: "", socialLinks: { facebook: "", instagram: "", twitter: "", linkedin: "" },
     participations: [],
-    achievements: []
+    achievements: [],
+    media: [],
+    playerJourney: ""
   });
   
   const [units, setUnits] = useState<Units>({ height: "cm", weight: "kg" });
@@ -102,11 +119,20 @@ const CreateProfile = () => {
     setUnits((prev) => ({ ...prev, [type]: value }));
   };
 
+  // --- Participation Handlers ---
   const handleAddParticipation = (record: ParticipationRecord) => {
       setFormData(prev => ({ ...prev, participations: [...prev.participations, record] }));
   }
   const handleRemoveParticipation = (id: string) => {
       setFormData(prev => ({ ...prev, participations: prev.participations.filter(p => p.id !== id) }));
+  }
+  
+  // NEW: Update a specific event's media/story
+  const handleEventUpdate = (eventId: string, updates: Partial<ParticipationRecord>) => {
+      setFormData(prev => ({
+          ...prev,
+          participations: prev.participations.map(p => p.id === eventId ? { ...p, ...updates } : p)
+      }));
   }
 
   const handleAddAchievement = (record: AchievementRecord) => {
@@ -185,7 +211,7 @@ const CreateProfile = () => {
             })}
           </div>
 
-          <form onSubmit={(e) => { e.preventDefault(); alert("Profile Submitted Successfully!"); }} className="p-6 md:p-8 lg:p-10">
+          <div className="p-6 md:p-8 lg:p-10">
             {activeTab === "PERSONAL INFO" ? (
               <PersonalInfoTab formData={formData} handleChange={handleInputChange} handleUnitChange={handleUnitChange} handleNationalityChange={handleNationalityChange} handleArrayChange={handleArrayChange} units={units} bmi={bmi} profilePic={profilePic} identityFile={identityFile} onPhotoUpload={(e) => handleFile(e, 'photo')} onPhotoRemove={() => setProfilePic(null)} onIdentityUpload={(e) => handleFile(e, 'identity')} onIdentityPreview={() => setModals({ ...modals, identity: true })} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext} />
             ) : activeTab === "SPORTS STATS" ? (
@@ -196,14 +222,20 @@ const CreateProfile = () => {
               <ParticipationTab participations={formData.participations} onAdd={handleAddParticipation} onRemove={handleRemoveParticipation} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext} onPrevious={handlePrevious} />
             ) : activeTab === "ACHIEVEMENTS" ? (
               <AchievementsTab achievements={formData.achievements} onAdd={handleAddAchievement} onRemove={handleRemoveAchievement} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext} onPrevious={handlePrevious} />
-            ) : (
-              <div className="h-64 flex flex-col items-center justify-center text-gray-500 gap-6">
-                  <p className="text-xl font-medium">Content for {activeTab} section coming soon...</p>
-                  {activeTab === "MEDIA" && <div className="text-center"><button type="submit" className="px-10 py-2.5 rounded-md bg-gradient-to-r from-lime-600 to-lime-500 text-black font-bold hover:brightness-110 transition-all uppercase tracking-wide shadow-[0_0_15px_rgba(132,204,22,0.4)]">Submit Profile</button></div>}
-                  <button type="button" onClick={handlePrevious} className="px-6 py-2 rounded-md bg-gray-800 text-gray-300 hover:text-white">Back</button>
-              </div>
-            )}
-          </form>
+            ) : activeTab === "MEDIA" ? (
+              <MediaTab 
+                  media={formData.media} 
+                  playerJourney={formData.playerJourney}
+                  participations={formData.participations}
+                  onUpdateMedia={(newMedia) => setFormData(prev => ({ ...prev, media: newMedia }))}
+                  onUpdateJourney={(text) => setFormData(prev => ({ ...prev, playerJourney: text }))}
+                  onUpdateEvent={handleEventUpdate}
+                  onPreview={() => setModals({ ...modals, preview: true })}
+                  onPrevious={handlePrevious}
+                  onSubmit={(e) => { e.preventDefault(); alert("Profile Submitted Successfully!"); }}
+              />
+            ) : null}
+          </div>
         </div>
       </main>
       <ProfileFooter />

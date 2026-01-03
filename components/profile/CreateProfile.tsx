@@ -23,9 +23,10 @@ export interface SportStatsData {
 
 export interface MediaItem {
     id: string;
-    type: 'image' | 'video' | 'certificate';
+    type: 'image' | 'video' | 'certificate' | 'link';
     url: string;
     caption?: string;
+    thumbnail?: string;
 }
 
 export interface ParticipationRecord {
@@ -186,7 +187,17 @@ const CreateProfile = () => {
 
   return (
     <div className="min-h-screen bg-black font-sans text-gray-300 flex flex-col">
-      <PreviewModal isOpen={modals.preview} onClose={() => setModals({ ...modals, preview: false })} data={formData} bmiData={bmi} image={profilePic} units={units} activeTab={activeTab} />
+      <PreviewModal
+        isOpen={modals.preview}
+        onClose={() => setModals({ ...modals, preview: false })}
+        data={formData}
+        bmiData={bmi}
+        image={profilePic}
+        units={units}
+        activeTab={activeTab}
+        onUpdateMedia={(newMedia) => setFormData(prev => ({ ...prev, media: newMedia }))}
+        onUpdateEvent={handleEventUpdate}
+      />
       <IdentityModal isOpen={modals.identity} onClose={() => setModals({ ...modals, identity: false })} file={identityFile} />
 
       <ProfileHeader />

@@ -8,9 +8,10 @@ import SportsStatsTab from "./tabs/SportsStatsTab";
 import BioTab from "./tabs/BioTab";
 import ParticipationTab from "./tabs/ParticipationTab";
 import AchievementsTab from "./tabs/AchievementsTab";
-import MediaTab from "./tabs/MediaTab"; // Ensure this import exists
+import MediaTab from "./tabs/MediaTab";
 import PreviewModal from "./modals/PreviewModal";
 import IdentityModal from "./modals/IdentityModal";
+import ProfileSummary from "./ProfileSummary";
 
 // --- Shared Types ---
 export interface SportStatsData {
@@ -22,45 +23,45 @@ export interface SportStatsData {
 }
 
 export interface MediaItem {
-    id: string;
-    type: 'image' | 'video' | 'certificate' | 'link';
-    url: string;
-    caption?: string;
-    thumbnail?: string;
+  id: string;
+  type: 'image' | 'video' | 'certificate' | 'link';
+  url: string;
+  caption?: string;
+  thumbnail?: string;
 }
 
 export interface ParticipationRecord {
-    id: string; 
-    tournamentName: string;
-    level: string; 
-    date: string;
-    location: string;
-    result: string;
-    // NEW: Event-specific Media & Story
-    story?: string;
-    media?: MediaItem[];
+  id: string;
+  tournamentName: string;
+  level: string;
+  date: string;
+  location: string;
+  result: string;
+  // NEW: Event-specific Media & Story
+  story?: string;
+  media?: MediaItem[];
 }
 
 export interface AchievementRecord {
-    id: string;
-    title: string;
-    organization: string;
-    date: string;
-    description: string;
-    certificateUrl: string | null;
-    certificateName: string | null;
+  id: string;
+  title: string;
+  organization: string;
+  date: string;
+  description: string;
+  certificateUrl: string | null;
+  certificateName: string | null;
 }
 
 export interface FormData {
-  fullName: string; dob: string; 
-  sports: string[]; 
+  fullName: string; dob: string;
+  sports: string[];
   contactNo: string; countryCode: string; gender: string; email: string; nationality: string; address: string;
   height: string; weight: string; dominantHand: string; disability: string; disabilityDesc: string; wingspan: string; agilityRating: string;
-  sportStats: Record<string, SportStatsData>; 
+  sportStats: Record<string, SportStatsData>;
   bio: string; languages: string[]; strengths: string[]; strengthDescription: string; weaknesses: string[]; weaknessDescription: string; socialLinks: { facebook: string; instagram: string; twitter: string; linkedin: string; };
   participations: ParticipationRecord[];
   achievements: AchievementRecord[];
-  
+
   // General Media (Profile Highlights)
   media: MediaItem[];
   playerJourney: string;
@@ -73,47 +74,48 @@ const TABS = ["PERSONAL INFO", "SPORTS STATS", "BIO", "PARTICIPATION", "ACHIEVEM
 
 const CreateProfile = () => {
   const [activeTab, setActiveTab] = useState("PERSONAL INFO");
-  const [furthestStep, setFurthestStep] = useState(0); 
+  const [furthestStep, setFurthestStep] = useState(0);
 
   const [formData, setFormData] = useState<FormData>({
     fullName: "", dob: "", sports: [], contactNo: "", countryCode: "+91", gender: "", email: "", nationality: "Indian", address: "",
     height: "", weight: "", dominantHand: "", disability: "No", disabilityDesc: "", wingspan: "", agilityRating: "",
-    sportStats: {}, 
+    sportStats: {},
     bio: "", languages: [], strengths: [], strengthDescription: "", weaknesses: [], weaknessDescription: "", socialLinks: { facebook: "", instagram: "", twitter: "", linkedin: "" },
     participations: [],
     achievements: [],
     media: [],
     playerJourney: ""
   });
-  
+
   const [units, setUnits] = useState<Units>({ height: "cm", weight: "kg" });
   const [bmi, setBmi] = useState({ value: "", status: "", color: "text-gray-500" });
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const [identityFile, setIdentityFile] = useState<IdentityFile | null>(null);
   const [modals, setModals] = useState({ preview: false, identity: false });
+  const [showSummary, setShowSummary] = useState(false);
 
   // --- Handlers ---
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    if (name === "contactNo" && !/^\d*$/.test(value)) return; 
+    if (name === "contactNo" && !/^\d*$/.test(value)) return;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSocialChange = (e: ChangeEvent<HTMLInputElement>) => {
-      const { name, value } = e.target;
-      setFormData(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, [name]: value } }));
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, [name]: value } }));
   };
 
   const handleArrayChange = (fieldName: keyof FormData, newArray: string[]) => {
-      setFormData(prev => ({ ...prev, [fieldName]: newArray }));
+    setFormData(prev => ({ ...prev, [fieldName]: newArray }));
   }
 
   const handleStatChange = (sport: string, field: string, value: string) => {
-      setFormData(prev => ({ ...prev, sportStats: { ...prev.sportStats, [sport]: { ...(prev.sportStats[sport] || {}), [field]: value } } }));
+    setFormData(prev => ({ ...prev, sportStats: { ...prev.sportStats, [sport]: { ...(prev.sportStats[sport] || {}), [field]: value } } }));
   };
 
   const handleNationalityChange = (nationality: string, code: string) => {
-      setFormData(prev => ({ ...prev, nationality, countryCode: code }));
+    setFormData(prev => ({ ...prev, nationality, countryCode: code }));
   }
 
   const handleUnitChange = (type: "height" | "weight", value: string) => {
@@ -122,48 +124,48 @@ const CreateProfile = () => {
 
   // --- Participation Handlers ---
   const handleAddParticipation = (record: ParticipationRecord) => {
-      setFormData(prev => ({ ...prev, participations: [...prev.participations, record] }));
+    setFormData(prev => ({ ...prev, participations: [...prev.participations, record] }));
   }
   const handleRemoveParticipation = (id: string) => {
-      setFormData(prev => ({ ...prev, participations: prev.participations.filter(p => p.id !== id) }));
+    setFormData(prev => ({ ...prev, participations: prev.participations.filter(p => p.id !== id) }));
   }
-  
+
   // NEW: Update a specific event's media/story
   const handleEventUpdate = (eventId: string, updates: Partial<ParticipationRecord>) => {
-      setFormData(prev => ({
-          ...prev,
-          participations: prev.participations.map(p => p.id === eventId ? { ...p, ...updates } : p)
-      }));
+    setFormData(prev => ({
+      ...prev,
+      participations: prev.participations.map(p => p.id === eventId ? { ...p, ...updates } : p)
+    }));
   }
 
   const handleAddAchievement = (record: AchievementRecord) => {
-      setFormData(prev => ({ ...prev, achievements: [...prev.achievements, record] }));
+    setFormData(prev => ({ ...prev, achievements: [...prev.achievements, record] }));
   }
   const handleRemoveAchievement = (id: string) => {
-      setFormData(prev => ({ ...prev, achievements: prev.achievements.filter(a => a.id !== id) }));
+    setFormData(prev => ({ ...prev, achievements: prev.achievements.filter(a => a.id !== id) }));
   }
 
   const handleNext = () => {
     const currentIndex = TABS.indexOf(activeTab);
     if (currentIndex < TABS.length - 1) {
-        const nextIndex = currentIndex + 1;
-        setActiveTab(TABS[nextIndex]);
-        if (nextIndex > furthestStep) setFurthestStep(nextIndex);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+      const nextIndex = currentIndex + 1;
+      setActiveTab(TABS[nextIndex]);
+      if (nextIndex > furthestStep) setFurthestStep(nextIndex);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const handlePrevious = () => {
     const currentIndex = TABS.indexOf(activeTab);
     if (currentIndex > 0) {
-        setActiveTab(TABS[currentIndex - 1]);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+      setActiveTab(TABS[currentIndex - 1]);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const handleTabClick = (tab: string) => {
-      const targetIndex = TABS.indexOf(tab);
-      if (targetIndex <= furthestStep) { setActiveTab(tab); }
+    const targetIndex = TABS.indexOf(tab);
+    if (targetIndex <= furthestStep) { setActiveTab(tab); }
   };
 
   useEffect(() => {
@@ -184,6 +186,22 @@ const CreateProfile = () => {
       if (type === 'photo') setProfilePic(url); else setIdentityFile({ name: file.name, url, type: file.type });
     }
   };
+
+  // If showing summary, render the ProfileSummary component
+  if (showSummary) {
+    return (
+      <ProfileSummary
+        data={formData}
+        bmiData={bmi}
+        image={profilePic}
+        units={units}
+        onEdit={() => {
+          setShowSummary(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black font-sans text-gray-300 flex flex-col">
@@ -215,8 +233,8 @@ const CreateProfile = () => {
               const isAccessible = index <= furthestStep;
               return (
                 <button key={tab} onClick={() => handleTabClick(tab)} disabled={!isAccessible} className={`px-6 py-4 text-xs md:text-sm font-bold tracking-wide transition-colors relative ${isActive ? "text-lime-500" : isAccessible ? "text-gray-400 hover:text-gray-200 cursor-pointer" : "text-gray-700 cursor-not-allowed"}`}>
-                    {tab}
-                    {isActive && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-lime-500" />}
+                  {tab}
+                  {isActive && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-lime-500" />}
                 </button>
               )
             })}
@@ -234,16 +252,20 @@ const CreateProfile = () => {
             ) : activeTab === "ACHIEVEMENTS" ? (
               <AchievementsTab achievements={formData.achievements} onAdd={handleAddAchievement} onRemove={handleRemoveAchievement} onPreview={() => setModals({ ...modals, preview: true })} onNext={handleNext} onPrevious={handlePrevious} />
             ) : activeTab === "MEDIA" ? (
-              <MediaTab 
-                  media={formData.media} 
-                  playerJourney={formData.playerJourney}
-                  participations={formData.participations}
-                  onUpdateMedia={(newMedia) => setFormData(prev => ({ ...prev, media: newMedia }))}
-                  onUpdateJourney={(text) => setFormData(prev => ({ ...prev, playerJourney: text }))}
-                  onUpdateEvent={handleEventUpdate}
-                  onPreview={() => setModals({ ...modals, preview: true })}
-                  onPrevious={handlePrevious}
-                  onSubmit={(e) => { e.preventDefault(); alert("Profile Submitted Successfully!"); }}
+              <MediaTab
+                media={formData.media}
+                playerJourney={formData.playerJourney}
+                participations={formData.participations}
+                onUpdateMedia={(newMedia) => setFormData(prev => ({ ...prev, media: newMedia }))}
+                onUpdateJourney={(text) => setFormData(prev => ({ ...prev, playerJourney: text }))}
+                onUpdateEvent={handleEventUpdate}
+                onPreview={() => setModals({ ...modals, preview: true })}
+                onPrevious={handlePrevious}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setShowSummary(true);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
               />
             ) : null}
           </div>

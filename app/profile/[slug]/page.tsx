@@ -13,6 +13,11 @@ interface ProfileData {
     gender: string;
     nationality: string;
     address: string;
+    contactNo: string;
+    countryCode: string;
+    email: string;
+    identityFileUrl?: string;
+    identityFileName?: string;
     height: string;
     weight: string;
     dominantHand: string;
@@ -49,6 +54,7 @@ export default function PublicProfilePage() {
                 // Use new public-profile endpoint
                 const response = await fetch(`/api/public-profile/${slug}`);
                 const data = await response.json();
+                console.log("Page: Received public profile data:", data);
 
                 if (!response.ok) {
                     setError(data.error || 'Profile not found');
@@ -104,10 +110,10 @@ export default function PublicProfilePage() {
         fullName: profile.fullName,
         dob: profile.dob,
         sports: profile.sports || [],
-        contactNo: '', // Hidden for public view
-        countryCode: '',
+        contactNo: profile.contactNo || '',
+        countryCode: profile.countryCode || '+91',
         gender: profile.gender,
-        email: '', // Hidden for public view
+        email: profile.email || '',
         nationality: profile.nationality,
         address: profile.address,
         height: profile.height,
@@ -117,6 +123,8 @@ export default function PublicProfilePage() {
         disabilityDesc: profile.disabilityDesc,
         wingspan: profile.wingspan,
         agilityRating: profile.agilityRating,
+        identityFileUrl: profile.identityFileUrl,
+        identityFileName: profile.identityFileName,
         sportStats: profile.sportStats || {},
         bio: profile.bio,
         languages: profile.languages || [],

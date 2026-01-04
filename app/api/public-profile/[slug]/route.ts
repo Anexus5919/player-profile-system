@@ -46,6 +46,10 @@ export async function GET(
             );
         }
 
+        console.log("API: Found profile:", profile.fullName);
+        console.log("API: Email:", profile.email, "Phone:", profile.contactNo);
+        console.log("API: Identity:", profile.identityFileUrl);
+
         // Return profile without sensitive data
         const publicProfile = {
             fullName: profile.fullName,
@@ -54,6 +58,9 @@ export async function GET(
             gender: profile.gender,
             nationality: profile.nationality,
             address: profile.address,
+            contactNo: profile.contactNo,
+            countryCode: profile.countryCode,
+            email: profile.email,
             height: profile.height,
             weight: profile.weight,
             dominantHand: profile.dominantHand,
@@ -62,6 +69,9 @@ export async function GET(
             wingspan: profile.wingspan,
             agilityRating: profile.agilityRating,
             profilePicUrl: profile.profilePicUrl,
+            identityFileUrl: profile.identityFileUrl,
+            identityFileName: profile.identityFileName,
+            identityFilePublicId: profile.identityFilePublicId,
             sportStats: profile.sportStats,
             bio: profile.bio,
             languages: profile.languages,

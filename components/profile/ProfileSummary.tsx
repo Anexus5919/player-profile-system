@@ -322,10 +322,10 @@ const ProfileSummary: React.FC<Props> = ({ data, bmiData, image, units, onEdit, 
     return (
         <div className="min-h-screen bg-black text-gray-300">
             {/* Header */}
-            <div className="bg-gradient-to-b from-[#1a1a1a] to-black py-8 border-b border-gray-800">
+            <div className="bg-gradient-to-b from-[#1a1a1a] to-black py-4 border-b border-gray-800">
                 <div className="max-w-5xl mx-auto px-4">
                     <h1 className="text-3xl md:text-4xl font-black text-lime-500 uppercase tracking-tight mb-2">Profile Summary</h1>
-                    <p className="text-gray-400 text-sm">Review your complete profile before submission</p>
+                    <p className="text-gray-400 text-md">This section presents your complete and final profile summary.</p>
                 </div>
             </div>
 

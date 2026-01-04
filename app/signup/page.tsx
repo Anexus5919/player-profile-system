@@ -4,17 +4,19 @@ import React, { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, Lock, User, UserPlus, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, User, UserPlus, Loader2, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function SignupPage() {
     const router = useRouter();
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
+        setLoading(true); // ... keep existing logic
         setError('');
 
         // Validate passwords match
@@ -138,14 +140,21 @@ export default function SignupPage() {
                             <div className="relative">
                                 <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-3 bg-[#121212] border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-lime-500 focus:outline-none transition-colors"
+                                    className="w-full pl-10 pr-12 py-3 bg-[#121212] border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-lime-500 focus:outline-none transition-colors"
                                     placeholder="••••••••"
                                     required
                                     minLength={6}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
                             </div>
                             {strength && (
                                 <div className="mt-2">
@@ -167,15 +176,23 @@ export default function SignupPage() {
                             <div className="relative">
                                 <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                                 <input
-                                    type="password"
+                                    type={showConfirmPassword ? "text" : "password"}
                                     value={formData.confirmPassword}
                                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-3 bg-[#121212] border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-lime-500 focus:outline-none transition-colors"
+                                    className="w-full pl-10 pr-12 py-3 bg-[#121212] border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-lime-500 focus:outline-none transition-colors"
                                     placeholder="••••••••"
                                     required
                                 />
-                                {formData.confirmPassword && formData.password === formData.confirmPassword && (
+                                {formData.confirmPassword && formData.password === formData.confirmPassword ? (
                                     <CheckCircle size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-lime-500" />
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                                    >
+                                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
                                 )}
                             </div>
                         </div>

@@ -71,6 +71,12 @@ export interface FormData {
   // General Media (Profile Highlights)
   media: MediaItem[];
   playerJourney: string;
+
+  // Identity & Meta
+  identityFileUrl?: string;
+  identityFileName?: string;
+  identityFilePublicId?: string;
+  shareableSlug?: string;
 }
 
 export interface Units { height: "cm" | "ft"; weight: "kg" | "lbs"; }
@@ -243,6 +249,12 @@ const CreateProfile = () => {
       const result = await saveProfile(formData);
 
       if (result.success) {
+        // Extract slug from shareableUrl (format: /profile/slug)
+        const slug = result.shareableUrl?.split('/').pop();
+        if (slug) {
+          setFormData(prev => ({ ...prev, shareableSlug: slug }));
+        }
+
         setProfileCompleted(true);
         setShowSummary(true);
         // Clear draft on successful save

@@ -9,19 +9,24 @@ export async function GET(
     { params }: { params: { slug: string } }
 ) {
     try {
-        // In recent Next.js versions, params must be awaited or accessed carefully if it's a promise
-        // However, the signature above suggests it's an object. 
-        // If it is failing, we might be in a version where it IS a promise despite the type.
-        // Let's try to treat it as a potential promise or object.
-        const resolvedParams: any = await params;
-        let slug = resolvedParams?.slug;
+        // Robust slug extraction
+        let slug;
 
-        // Fallback: Extract slug from URL if params failed
+        try {
+            const resolvedParams: any = await params;
+            slug = resolvedParams?.slug;
+        } catch (e) {
+            console.log("Params await failed", e);
+        }
+
         if (!slug) {
             const pathname = request.nextUrl.pathname;
+            // Path is /api/public-profile/[slug]
             slug = pathname.split('/').pop();
             console.log("API: Extracted slug from URL:", slug);
         }
+
+        console.log("API: Fetching public profile for slug:", slug);
 
         await connectDB();
 
@@ -69,6 +74,7 @@ export async function GET(
             achievements: profile.achievements,
             media: profile.media,
             playerJourney: profile.playerJourney,
+            shareableSlug: profile.shareableSlug, // useful for confirmation
         };
 
         return NextResponse.json({

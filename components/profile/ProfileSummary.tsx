@@ -214,38 +214,39 @@ interface Props {
     image: string | null;
     units: Units;
     onEdit: () => void;
+    isPublicView?: boolean;
 }
 
-const ProfileSummary: React.FC<Props> = ({ data, bmiData, image, units, onEdit }) => {
+const ProfileSummary: React.FC<Props> = ({ data, bmiData, image, units, onEdit, isPublicView = false }) => {
     const [expandedAchievementId, setExpandedAchievementId] = useState<string | null>(null);
     const [selectedSport, setSelectedSport] = useState(data.sports.length > 0 ? data.sports[0] : "");
     const [imageModal, setImageModal] = useState<{ isOpen: boolean; url: string; caption?: string }>({ isOpen: false, url: '', caption: '' });
     const [mediaFilter, setMediaFilter] = useState<'all' | 'image' | 'video' | 'link' | 'certificate'>('all');
     const [eventMediaFilters, setEventMediaFilters] = useState<Record<string, 'all' | 'image' | 'video' | 'link' | 'certificate'>>({});
 
+    const [shareModal, setShareModal] = useState(false);
+    const [copied, setCopied] = useState(false);
+
     const getEventFilter = (eventId: string) => eventMediaFilters[eventId] || 'all';
     const setEventFilter = (eventId: string, filter: 'all' | 'image' | 'video' | 'link' | 'certificate') => {
         setEventMediaFilters(prev => ({ ...prev, [eventId]: filter }));
     };
 
-    const handleShare = async () => {
-        const shareData = {
-            title: `${data.fullName} - Player Profile`,
-            text: `Check out ${data.fullName}'s sports profile!`,
-            url: window.location.href
-        };
+    const handleShare = () => {
+        setShareModal(true);
+    };
 
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-            } catch (err) {
-                // User cancelled or error
-                navigator.clipboard.writeText(window.location.href);
-                alert('Profile link copied to clipboard!');
-            }
-        } else {
-            navigator.clipboard.writeText(window.location.href);
-            alert('Profile link copied to clipboard!');
+    const copyToClipboard = async () => {
+        const urlToShare = data.shareableSlug
+            ? `${window.location.origin}/profile/${data.shareableSlug}`
+            : window.location.href;
+
+        try {
+            await navigator.clipboard.writeText(urlToShare);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy info: ', err);
         }
     };
 
@@ -359,15 +360,28 @@ const ProfileSummary: React.FC<Props> = ({ data, bmiData, image, units, onEdit }
                                         {data.disability || 'No'}
                                     </span>
                                 </div>
+                                {data.identityFileUrl && (
+                                    <div className="bg-[#1a1a1a] p-2 rounded-lg border border-gray-800">
+                                        <span className="text-gray-500 text-[10px] uppercase font-bold block mb-0.5">Identity Proof</span>
+                                        <a href={data.identityFileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-bold text-lime-500 hover:underline">
+                                            <FileText size={12} /> View Doc
+                                        </a>
+                                    </div>
+                                )}
+                                <div className={`p-2 rounded-lg border flex flex-col justify-center ${data.identityFileUrl ? 'md:col-span-2' : 'col-span-2 md:col-span-3'
+                                    } ${data.disability === 'Yes'
+                                        ? 'bg-yellow-500/10 border-yellow-500/30'
+                                        : 'bg-[#1a1a1a] border-gray-800'
+                                    }`}>
+                                    <span className={`text-[10px] uppercase font-bold block mb-0.5 ${data.disability === 'Yes' ? 'text-yellow-500' : 'text-gray-500'
+                                        }`}>Disability Description</span>
+                                    <span className={`text-xs font-medium leading-tight block ${data.disability === 'Yes' ? 'text-yellow-100' : 'text-gray-500 italic'
+                                        }`}>
+                                        {data.disability === 'Yes' && data.disabilityDesc ? data.disabilityDesc : 'No disability found'}
+                                    </span>
+                                </div>
                             </div>
 
-                            {/* Disability Description if applicable */}
-                            {data.disability === 'Yes' && data.disabilityDesc && (
-                                <div className="mb-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                                    <span className="text-yellow-500 text-[10px] uppercase font-bold block mb-1">Disability Details</span>
-                                    <p className="text-gray-300 text-sm">{data.disabilityDesc}</p>
-                                </div>
-                            )}
 
                             {/* Address if available */}
                             {data.address && (
@@ -731,31 +745,100 @@ const ProfileSummary: React.FC<Props> = ({ data, bmiData, image, units, onEdit }
                 </SectionWrapper>
 
                 {/* Action Buttons */}
-                <div className="flex justify-between items-center pt-6 border-t border-gray-800">
-                    <button onClick={onEdit} className="px-6 py-3 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 font-bold hover:bg-gray-700 hover:text-white transition-all uppercase tracking-wide flex items-center gap-2 text-sm">
-                        <ArrowLeft size={18} /> Edit Profile
-                    </button>
-                    <button onClick={handleShare} className="px-8 py-3 rounded-lg bg-gradient-to-r from-lime-600 to-lime-500 text-black font-bold hover:brightness-110 transition-all uppercase tracking-wide flex items-center gap-2 text-sm shadow-[0_0_20px_rgba(132,204,22,0.4)]">
-                        <Share2 size={18} /> Share Profile
-                    </button>
-                </div>
-            </div>
+                {/* Action Buttons */}
+                {!isPublicView && (
+                    <div className="flex justify-between items-center pt-6 border-t border-gray-800">
+                        <button onClick={onEdit} className="px-6 py-3 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 font-bold hover:bg-gray-700 hover:text-white transition-all uppercase tracking-wide flex items-center gap-2 text-sm">
+                            <ArrowLeft size={18} /> Edit Profile
+                        </button>
+                        <button onClick={handleShare} className="px-8 py-3 rounded-lg bg-gradient-to-r from-lime-600 to-lime-500 text-black font-bold hover:brightness-110 transition-all uppercase tracking-wide flex items-center gap-2 text-sm shadow-[0_0_20px_rgba(132,204,22,0.4)]">
+                            <Share2 size={18} /> Share Profile
+                        </button>
+                    </div>
+                )}
+            </div >
 
             {/* Image Modal */}
-            {imageModal.isOpen && (
-                <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[200] flex items-center justify-center p-4" onClick={closeImageModal}>
-                    <div className="relative max-w-4xl max-h-[90vh] animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={closeImageModal} className="absolute -top-12 right-0 text-white hover:text-lime-500 transition-colors">
-                            <X size={32} />
-                        </button>
-                        <img src={imageModal.url} className="max-w-full max-h-[85vh] object-contain rounded-lg" />
-                        {imageModal.caption && (
-                            <p className="text-white text-center mt-4 text-sm">{imageModal.caption}</p>
-                        )}
+            {
+                imageModal.isOpen && (
+                    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[200] flex items-center justify-center p-4" onClick={closeImageModal}>
+                        <div className="relative max-w-4xl max-h-[90vh] animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+                            <button onClick={closeImageModal} className="absolute -top-12 right-0 text-white hover:text-lime-500 transition-colors">
+                                <X size={32} />
+                            </button>
+                            <img src={imageModal.url} className="max-w-full max-h-[85vh] object-contain rounded-lg" />
+                            {imageModal.caption && (
+                                <p className="text-white text-center mt-4 text-sm">{imageModal.caption}</p>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+
+            {/* Share Modal */}
+            {
+                shareModal && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={() => setShareModal(false)}>
+                        <div className="bg-[#1a1a1a] rounded-xl border border-gray-700 p-6 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200 relative" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => setShareModal(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors">
+                                <X size={20} />
+                            </button>
+
+                            <div className="text-center mb-6">
+                                <div className="w-16 h-16 bg-lime-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-lime-500/20">
+                                    <Share2 size={32} className="text-lime-500" />
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-1">Share Profile</h3>
+                                <p className="text-gray-400 text-sm">Share this profile with coaches and scouts.</p>
+                            </div>
+
+                            {data.shareableSlug ? (
+                                <div className="bg-black/50 p-4 rounded-lg border border-gray-800 mb-6">
+                                    <p className="text-xs text-gray-500 uppercase font-bold mb-2">Public Profile Link</p>
+                                    <div className="flex items-center gap-2 bg-[#121212] p-2 rounded border border-gray-700">
+                                        <Globe size={16} className="text-gray-500 shrink-0" />
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={`${window.location.origin}/profile/${data.shareableSlug}`}
+                                            className="bg-transparent border-none outline-none text-gray-300 text-sm flex-1 truncate font-mono"
+                                        />
+                                        <button
+                                            onClick={copyToClipboard}
+                                            className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${copied ? 'bg-green-500 text-black' : 'bg-gray-700 text-white hover:bg-gray-600'}`}
+                                        >
+                                            {copied ? 'Copied!' : 'Copy'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-lg mb-6 text-center">
+                                    <p className="text-yellow-500 text-sm font-medium">Profile not published yet.</p>
+                                    <p className="text-gray-400 text-xs mt-1">Please save your profile to generate a shareable link.</p>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShareModal(false)}
+                                    className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+                                >
+                                    Close
+                                </button>
+                                {data.shareableSlug && (
+                                    <button
+                                        onClick={() => window.open(`/profile/${data.shareableSlug}`, '_blank')}
+                                        className="flex-1 bg-lime-500 hover:bg-lime-400 text-black py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <ExternalLink size={16} /> Open Public View
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 

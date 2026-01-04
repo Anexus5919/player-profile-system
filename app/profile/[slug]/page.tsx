@@ -46,7 +46,8 @@ export default function PublicProfilePage() {
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const response = await fetch(`/api/profile/${slug}`);
+                // Use new public-profile endpoint
+                const response = await fetch(`/api/public-profile/${slug}`);
                 const data = await response.json();
 
                 if (!response.ok) {
@@ -161,6 +162,7 @@ export default function PublicProfilePage() {
                 image={profile.profilePicUrl}
                 units={{ height: "cm", weight: "kg" }}
                 onEdit={() => { }} // No edit for public view
+                isPublicView={true}
             />
         </div>
     );

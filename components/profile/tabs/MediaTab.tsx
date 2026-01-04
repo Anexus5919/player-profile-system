@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { ArrowRight, ArrowLeft, Upload, X, Image as ImageIcon, Film, FileText, Play, Plus, Trash2, Trophy, Globe } from "lucide-react";
 import { MediaItem, ParticipationRecord } from "../CreateProfile";
+import { useUpload } from "@/hooks/useUpload";
 
 const inputBaseStyle = "w-full bg-[#2C2C2C] text-gray-200 rounded-md px-3 py-2.5 outline-none focus:ring-1 focus:ring-lime-500 transition-all placeholder-gray-500 text-sm border border-transparent focus:border-lime-500/50";
 const labelStyle = "block text-[#a3a3a3] text-sm mb-1.5 font-medium";
@@ -49,6 +50,8 @@ interface Props {
 }
 
 const MediaTab: React.FC<Props> = ({ media, playerJourney, participations, onUpdateMedia, onUpdateJourney, onUpdateEvent, onPreview, onPrevious, onSubmit }) => {
+  const { upload, uploading, progress } = useUpload();
+
   // 'general' or participation ID
   const [selectedContext, setSelectedContext] = useState<string>('general');
   const [activeType, setActiveType] = useState<'image' | 'video' | 'certificate' | 'link'>('image');
@@ -65,19 +68,36 @@ const MediaTab: React.FC<Props> = ({ media, playerJourney, participations, onUpd
   const currentMedia = isGeneral ? media : (activeEvent?.media || []);
   const currentStory = isGeneral ? playerJourney : (activeEvent?.story || "");
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newItems: MediaItem[] = Array.from(e.target.files).map(file => ({
-        id: Math.random().toString(36).substr(2, 9),
-        type: activeType,
-        url: URL.createObjectURL(file),
-        caption: file.name
-      }));
+      const files = Array.from(e.target.files);
 
-      if (isGeneral) {
-        onUpdateMedia([...media, ...newItems]);
-      } else if (activeEvent) {
-        onUpdateEvent(activeEvent.id, { media: [...(activeEvent.media || []), ...newItems] });
+      // Process files sequentially or parallel? Parallel is faster but useUpload is single file?
+      // useUpload is single file. Let's map over them.
+      // But we should show loading state.
+
+      const newItems: MediaItem[] = [];
+
+      try {
+        for (const file of files) {
+          const result = await upload(file, 'player-media');
+          newItems.push({
+            id: result.publicId || Math.random().toString(36).substr(2, 9),
+            type: activeType,
+            url: result.url,
+            caption: file.name,
+            publicId: result.publicId
+          });
+        }
+
+        if (isGeneral) {
+          onUpdateMedia([...media, ...newItems]);
+        } else if (activeEvent) {
+          onUpdateEvent(activeEvent.id, { media: [...(activeEvent.media || []), ...newItems] });
+        }
+      } catch (error) {
+        console.error("Upload failed", error);
+        alert("Some files failed to upload.");
       }
     }
   };
@@ -152,24 +172,37 @@ const MediaTab: React.FC<Props> = ({ media, playerJourney, participations, onUpd
     setIsDragging(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  // Update handleDrop similarly
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
 
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      const newItems: MediaItem[] = Array.from(files).map(file => ({
-        id: Math.random().toString(36).substr(2, 9),
-        type: activeType,
-        url: URL.createObjectURL(file),
-        caption: file.name
-      }));
+      const fileArray = Array.from(files);
+      const newItems: MediaItem[] = [];
 
-      if (isGeneral) {
-        onUpdateMedia([...media, ...newItems]);
-      } else if (activeEvent) {
-        onUpdateEvent(activeEvent.id, { media: [...(activeEvent.media || []), ...newItems] });
+      try {
+        for (const file of fileArray) {
+          const result = await upload(file, 'player-media');
+          newItems.push({
+            id: result.publicId || Math.random().toString(36).substr(2, 9),
+            type: activeType,
+            url: result.url,
+            caption: file.name,
+            publicId: result.publicId
+          });
+        }
+
+        if (isGeneral) {
+          onUpdateMedia([...media, ...newItems]);
+        } else if (activeEvent) {
+          onUpdateEvent(activeEvent.id, { media: [...(activeEvent.media || []), ...newItems] });
+        }
+      } catch (error) {
+        console.error("Upload failed", error);
+        alert("Upload failed");
       }
     }
   };

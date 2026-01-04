@@ -12,6 +12,10 @@ import MediaTab from "./tabs/MediaTab";
 import PreviewModal from "./modals/PreviewModal";
 import IdentityModal from "./modals/IdentityModal";
 import ProfileSummary from "./ProfileSummary";
+import { useProfile } from "@/hooks/useProfile";
+import { useUpload } from "@/hooks/useUpload";
+import { uploadToCloudinary } from "@/lib/cloudinary"; // We might need this or just use the hook
+import { Loader2 } from "lucide-react";
 
 // --- Shared Types ---
 export interface SportStatsData {
@@ -28,6 +32,7 @@ export interface MediaItem {
   url: string;
   caption?: string;
   thumbnail?: string;
+  publicId?: string; // Added for Cloudinary
 }
 
 export interface ParticipationRecord {
@@ -50,6 +55,7 @@ export interface AchievementRecord {
   description: string;
   certificateUrl: string | null;
   certificateName: string | null;
+  publicId?: string; // Added for Cloudinary
 }
 
 export interface FormData {
@@ -68,31 +74,208 @@ export interface FormData {
 }
 
 export interface Units { height: "cm" | "ft"; weight: "kg" | "lbs"; }
-export interface IdentityFile { name: string; url: string; type: string; }
+export interface IdentityFile { name: string; url: string; type: string; publicId?: string; }
 
 const TABS = ["PERSONAL INFO", "SPORTS STATS", "BIO", "PARTICIPATION", "ACHIEVEMENTS", "MEDIA"];
 
+const getDefaultFormData = (): FormData => ({
+  fullName: "", dob: "", sports: [], contactNo: "", countryCode: "+91", gender: "", email: "", nationality: "Indian", address: "",
+  height: "", weight: "", dominantHand: "", disability: "No", disabilityDesc: "", wingspan: "", agilityRating: "",
+  sportStats: {},
+  bio: "", languages: [], strengths: [], strengthDescription: "", weaknesses: [], weaknessDescription: "", socialLinks: { facebook: "", instagram: "", twitter: "", linkedin: "" },
+  participations: [],
+  achievements: [],
+  media: [],
+  playerJourney: ""
+});
+
 const CreateProfile = () => {
+  const { fetchProfile, saveProfile, loading: dbLoading } = useProfile();
+  const { upload, uploading, progress } = useUpload();
+
   const [activeTab, setActiveTab] = useState("PERSONAL INFO");
   const [furthestStep, setFurthestStep] = useState(0);
+  const [profileCompleted, setProfileCompleted] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
-  const [formData, setFormData] = useState<FormData>({
-    fullName: "", dob: "", sports: [], contactNo: "", countryCode: "+91", gender: "", email: "", nationality: "Indian", address: "",
-    height: "", weight: "", dominantHand: "", disability: "No", disabilityDesc: "", wingspan: "", agilityRating: "",
-    sportStats: {},
-    bio: "", languages: [], strengths: [], strengthDescription: "", weaknesses: [], weaknessDescription: "", socialLinks: { facebook: "", instagram: "", twitter: "", linkedin: "" },
-    participations: [],
-    achievements: [],
-    media: [],
-    playerJourney: ""
-  });
-
+  const [formData, setFormData] = useState<FormData>(getDefaultFormData());
   const [units, setUnits] = useState<Units>({ height: "cm", weight: "kg" });
   const [bmi, setBmi] = useState({ value: "", status: "", color: "text-gray-500" });
   const [profilePic, setProfilePic] = useState<string | null>(null);
+  const [profilePicPublicId, setProfilePicPublicId] = useState<string | null>(null);
   const [identityFile, setIdentityFile] = useState<IdentityFile | null>(null);
   const [modals, setModals] = useState({ preview: false, identity: false });
   const [showSummary, setShowSummary] = useState(false);
+
+  // Load saved data on mount
+  const PLAYER_PROFILE_DRAFT_KEY = 'player_profile_draft';
+
+  useEffect(() => {
+    const loadData = async () => {
+      setInitialLoading(true);
+      let dbProfile: any = null;
+
+      // 1. Try to fetch from DB
+      try {
+        dbProfile = await fetchProfile();
+
+        if (dbProfile) {
+          setFormData(prev => ({
+            ...getDefaultFormData(),
+            ...prev,
+            ...dbProfile,
+            // Ensure arrays are initialized
+            sports: dbProfile.sports || [],
+            languages: dbProfile.languages || [],
+            strengths: dbProfile.strengths || [],
+            weaknesses: dbProfile.weaknesses || [],
+            media: dbProfile.media || [],
+            participations: dbProfile.participations || [],
+            achievements: dbProfile.achievements || [],
+          }));
+
+          setUnits({
+            height: dbProfile.height && dbProfile.height.includes('ft') ? 'ft' : 'cm',
+            weight: dbProfile.weight && dbProfile.weight.includes('lbs') ? 'lbs' : 'kg'
+          });
+
+          if (dbProfile.profilePicUrl) {
+            setProfilePic(dbProfile.profilePicUrl);
+            setProfilePicPublicId(dbProfile.profilePicPublicId);
+          }
+
+          if (dbProfile.identityFileUrl) {
+            setIdentityFile({
+              name: dbProfile.identityFileName || 'Identity Proof',
+              url: dbProfile.identityFileUrl,
+              type: 'application/pdf',
+              publicId: dbProfile.identityFilePublicId
+            });
+          }
+
+          // Ensure completed status if shareable slug exists
+          if (dbProfile.shareableSlug) {
+            setProfileCompleted(true);
+            setShowSummary(true);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch from DB:", error);
+      }
+
+      // 2. If no DB profile, check localStorage for draft
+      if (!dbProfile) { // Removed `&& !hasProfile` as `hasProfile` is not defined in this scope
+        const savedDraft = localStorage.getItem(PLAYER_PROFILE_DRAFT_KEY);
+        if (savedDraft) {
+          try {
+            const { formData: draftData, units: draftUnits, activeTab: draftTab } = JSON.parse(savedDraft);
+            // Merge with default to ensure structural integrity
+            setFormData(prev => ({
+              ...getDefaultFormData(),
+              ...prev,
+              ...draftData,
+              sports: draftData.sports || [],
+              languages: draftData.languages || [],
+              strengths: draftData.strengths || [],
+              weaknesses: draftData.weaknesses || [],
+              media: draftData.media || [],
+              participations: draftData.participations || [],
+              achievements: draftData.achievements || [],
+            }));
+
+            if (draftUnits) setUnits(draftUnits);
+            if (draftTab) {
+              setActiveTab(draftTab);
+              const tabIndex = TABS.indexOf(draftTab);
+              if (tabIndex > 0) setFurthestStep(tabIndex);
+            }
+            if (draftData.profilePicUrl) setProfilePic(draftData.profilePicUrl);
+            if (draftData.profilePicPublicId) setProfilePicPublicId(draftData.profilePicPublicId);
+
+            if (draftData.identityFileUrl) {
+              setIdentityFile({
+                name: draftData.identityFileName || 'Identity Proof',
+                url: draftData.identityFileUrl,
+                type: 'application/pdf',
+                publicId: draftData.identityFilePublicId
+              });
+            }
+
+          } catch (e) {
+            console.error("Failed to parse draft:", e);
+            localStorage.removeItem(PLAYER_PROFILE_DRAFT_KEY);
+          }
+        }
+      }
+
+      setInitialLoading(false);
+    };
+
+    loadData();
+  }, [fetchProfile]); // Removed `hasProfile` from dependency array as it's not defined in this scope
+
+  // Auto-save draft on form changes (debounced)
+  useEffect(() => {
+    if (initialLoading || dbLoading || profileCompleted) return;
+
+    const timeoutId = setTimeout(() => {
+      // Save to localStorage
+      const draftState = {
+        formData,
+        units,
+        activeTab
+      };
+      localStorage.setItem(PLAYER_PROFILE_DRAFT_KEY, JSON.stringify(draftState));
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, [formData, units, activeTab, initialLoading, profileCompleted, dbLoading]);
+
+  // Handle profile submission
+  const handleProfileSubmit = async () => {
+    // Basic validation check before submit
+    if (!formData.fullName || !formData.email) {
+      alert("Please ensure all required fields (Name, Email) are filled.");
+      return;
+    }
+
+    try {
+      const result = await saveProfile(formData);
+
+      if (result.success) {
+        setProfileCompleted(true);
+        setShowSummary(true);
+        // Clear draft on successful save
+        localStorage.removeItem(PLAYER_PROFILE_DRAFT_KEY);
+        alert("Profile saved successfully!");
+      } else {
+        console.error("Profile save failed", result);
+        alert(`Failed to save profile: ${result.error || 'Unknown error'}. Please try again.`);
+      }
+    } catch (e) {
+      console.error("Submit error:", e);
+      alert("An error occurred during submission.");
+    }
+  };
+
+  // Handle starting fresh (clearing everything)
+  const handleStartFresh = () => {
+    if (confirm("Are you sure? This will clear your current progress.")) {
+      // Reset state
+      setFormData(getDefaultFormData());
+      setUnits({ height: "cm", weight: "kg" });
+      setProfilePic(null);
+      setProfilePicPublicId(null);
+      setIdentityFile(null);
+      setProfileCompleted(false);
+      setShowSummary(false);
+      setActiveTab("PERSONAL INFO");
+      setFurthestStep(0);
+
+      // Clear draft
+      localStorage.removeItem(PLAYER_PROFILE_DRAFT_KEY);
+    }
+  };
 
   // --- Handlers ---
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -179,13 +362,54 @@ const CreateProfile = () => {
     } else { setBmi({ value: "", status: "", color: "text-gray-500" }); }
   }, [formData.height, formData.weight, units]);
 
-  const handleFile = (e: ChangeEvent<HTMLInputElement>, type: 'photo' | 'identity') => {
+  const handleFile = async (e: ChangeEvent<HTMLInputElement>, type: 'photo' | 'identity') => {
     if (e.target.files?.[0]) {
       const file = e.target.files[0];
-      const url = URL.createObjectURL(file);
-      if (type === 'photo') setProfilePic(url); else setIdentityFile({ name: file.name, url, type: file.type });
+
+      try {
+        // Upload to Cloudinary
+        const result = await upload(file, type === 'photo' ? 'player-photos' : 'identity-proofs');
+
+        if (type === 'photo') {
+          setProfilePic(result.url);
+          setProfilePicPublicId(result.publicId);
+          setFormData(prev => ({
+            ...prev,
+            profilePicUrl: result.url,
+            profilePicPublicId: result.publicId
+          }));
+        } else {
+          setIdentityFile({
+            name: result.fileName,
+            url: result.url,
+            type: result.fileType,
+            publicId: result.publicId
+          });
+          setFormData(prev => ({
+            ...prev,
+            identityFileUrl: result.url,
+            identityFileName: result.fileName,
+            identityFilePublicId: result.publicId
+          }));
+        }
+      } catch (error) {
+        console.error("Upload failed:", error);
+        alert("File upload failed. Please try again.");
+      }
     }
   };
+
+  // Show loading spinner while checking localStorage
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full border-4 border-gray-700 border-t-lime-500 animate-spin"></div>
+          <p className="text-gray-400 text-sm">Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   // If showing summary, render the ProfileSummary component
   if (showSummary) {
@@ -196,7 +420,9 @@ const CreateProfile = () => {
         image={profilePic}
         units={units}
         onEdit={() => {
+          // Allow editing - this goes back to form without clearing completed status
           setShowSummary(false);
+          setProfileCompleted(false); // Allow draft saving during edit
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
@@ -263,7 +489,7 @@ const CreateProfile = () => {
                 onPrevious={handlePrevious}
                 onSubmit={(e) => {
                   e.preventDefault();
-                  setShowSummary(true);
+                  handleProfileSubmit();
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
               />

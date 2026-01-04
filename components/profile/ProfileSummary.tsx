@@ -221,6 +221,12 @@ const ProfileSummary: React.FC<Props> = ({ data, bmiData, image, units, onEdit }
     const [selectedSport, setSelectedSport] = useState(data.sports.length > 0 ? data.sports[0] : "");
     const [imageModal, setImageModal] = useState<{ isOpen: boolean; url: string; caption?: string }>({ isOpen: false, url: '', caption: '' });
     const [mediaFilter, setMediaFilter] = useState<'all' | 'image' | 'video' | 'link' | 'certificate'>('all');
+    const [eventMediaFilters, setEventMediaFilters] = useState<Record<string, 'all' | 'image' | 'video' | 'link' | 'certificate'>>({});
+
+    const getEventFilter = (eventId: string) => eventMediaFilters[eventId] || 'all';
+    const setEventFilter = (eventId: string, filter: 'all' | 'image' | 'video' | 'link' | 'certificate') => {
+        setEventMediaFilters(prev => ({ ...prev, [eventId]: filter }));
+    };
 
     const handleShare = async () => {
         const shareData = {
@@ -332,6 +338,47 @@ const ProfileSummary: React.FC<Props> = ({ data, bmiData, image, units, onEdit }
                                 <div className="flex items-center gap-2"><Activity size={14} className="text-lime-500" /><span className="text-xs font-medium text-gray-300">Agility Rating</span></div>
                                 <div className="flex gap-1">{[1, 2, 3, 4, 5].map(star => <div key={star} className={`h-2 w-5 rounded-full ${star <= parseInt(data.agilityRating || '0') ? 'bg-lime-500 shadow-[0_0_6px_rgba(132,204,22,0.5)]' : 'bg-gray-700'}`}></div>)}</div>
                             </div>
+
+                            {/* Additional Physical Stats */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
+                                {data.wingspan && (
+                                    <div className="bg-[#1a1a1a] p-2 rounded-lg border border-gray-800">
+                                        <span className="text-gray-500 text-[10px] uppercase font-bold block mb-0.5">Wingspan</span>
+                                        <span className="text-sm font-bold text-white">{data.wingspan} <span className="text-xs text-gray-600">{units.height}</span></span>
+                                    </div>
+                                )}
+                                {data.dominantHand && (
+                                    <div className="bg-[#1a1a1a] p-2 rounded-lg border border-gray-800">
+                                        <span className="text-gray-500 text-[10px] uppercase font-bold block mb-0.5">Dominant Hand</span>
+                                        <span className="text-sm font-bold text-white">{data.dominantHand}</span>
+                                    </div>
+                                )}
+                                <div className="bg-[#1a1a1a] p-2 rounded-lg border border-gray-800">
+                                    <span className="text-gray-500 text-[10px] uppercase font-bold block mb-0.5">Disability</span>
+                                    <span className={`text-sm font-bold ${data.disability === 'Yes' ? 'text-yellow-500' : 'text-lime-500'}`}>
+                                        {data.disability || 'No'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Disability Description if applicable */}
+                            {data.disability === 'Yes' && data.disabilityDesc && (
+                                <div className="mb-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                                    <span className="text-yellow-500 text-[10px] uppercase font-bold block mb-1">Disability Details</span>
+                                    <p className="text-gray-300 text-sm">{data.disabilityDesc}</p>
+                                </div>
+                            )}
+
+                            {/* Address if available */}
+                            {data.address && (
+                                <div className="mb-3 p-2 bg-[#1a1a1a] rounded-lg border border-gray-800">
+                                    <span className="flex items-center gap-1 text-gray-500 text-[10px] uppercase font-bold mb-1">
+                                        <MapPin size={10} /> Address
+                                    </span>
+                                    <p className="text-gray-300 text-xs">{data.address}</p>
+                                </div>
+                            )}
+
                             <div className="flex flex-wrap gap-3 text-xs text-gray-400">
                                 <span className="flex items-center gap-1"><Mail size={12} className="text-lime-500" /> {data.email || "No Email"}</span>
                                 <span className="flex items-center gap-1"><Phone size={12} className="text-lime-500" /> {data.contactNo || "No Phone"}</span>
@@ -503,8 +550,8 @@ const ProfileSummary: React.FC<Props> = ({ data, bmiData, image, units, onEdit }
                                                 key={tab.key}
                                                 onClick={() => setMediaFilter(tab.key as typeof mediaFilter)}
                                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${mediaFilter === tab.key
-                                                        ? 'bg-lime-500 text-black'
-                                                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                                                    ? 'bg-lime-500 text-black'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
                                                     }`}
                                             >
                                                 <TabIcon size={12} />
@@ -598,46 +645,79 @@ const ProfileSummary: React.FC<Props> = ({ data, bmiData, image, units, onEdit }
                                                         </div>
                                                     )}
                                                     {p.media && p.media.length > 0 && (
-                                                        <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
-                                                            {p.media.map(item => {
-                                                                if (item.type === 'image') {
+                                                        <div>
+                                                            {/* Event Media Filter Tabs */}
+                                                            <div className="flex flex-wrap gap-1.5 mb-3">
+                                                                {[
+                                                                    { key: 'all', label: 'All', icon: Film },
+                                                                    { key: 'image', label: 'Photos', icon: ImageIcon },
+                                                                    { key: 'video', label: 'Videos', icon: Video },
+                                                                    { key: 'link', label: 'Links', icon: Link },
+                                                                    { key: 'certificate', label: 'Certs', icon: FileText }
+                                                                ].map(tab => {
+                                                                    const TabIcon = tab.icon;
+                                                                    const count = tab.key === 'all'
+                                                                        ? p.media!.length
+                                                                        : p.media!.filter(m => m.type === tab.key).length;
+                                                                    if (count === 0 && tab.key !== 'all') return null;
                                                                     return (
-                                                                        <div
-                                                                            key={item.id}
-                                                                            className="aspect-video rounded-lg overflow-hidden border border-gray-800 cursor-pointer hover:border-lime-500/50 transition-all group"
-                                                                            onClick={() => openImageModal(item.url, item.caption)}
+                                                                        <button
+                                                                            key={tab.key}
+                                                                            onClick={() => setEventFilter(p.id, tab.key as 'all' | 'image' | 'video' | 'link' | 'certificate')}
+                                                                            className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase transition-all ${getEventFilter(p.id) === tab.key
+                                                                                ? 'bg-lime-500 text-black'
+                                                                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                                                                }`}
                                                                         >
-                                                                            <img src={item.url} className="w-full h-full object-cover group-hover:scale-110 transition-transform" alt={item.caption || ''} />
-                                                                        </div>
+                                                                            <TabIcon size={10} />
+                                                                            {tab.label} ({count})
+                                                                        </button>
                                                                     );
-                                                                }
-                                                                if (item.type === 'video') {
-                                                                    return (
-                                                                        <div
-                                                                            key={item.id}
-                                                                            className="aspect-video rounded-lg overflow-hidden border border-gray-800 bg-[#1a1a1a] relative cursor-pointer hover:border-red-500/50 group"
-                                                                            onClick={() => window.open(item.url, '_blank')}
-                                                                        >
-                                                                            {item.thumbnail && <img src={item.thumbnail} className="w-full h-full object-cover opacity-60" />}
-                                                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                                                <div className="w-8 h-8 rounded-full bg-red-500/80 flex items-center justify-center">
-                                                                                    <Play size={14} className="text-white ml-0.5" fill="white" />
+                                                                })}
+                                                            </div>
+
+                                                            {/* Filtered Media Grid */}
+                                                            <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                                                                {p.media.filter(m => getEventFilter(p.id) === 'all' || m.type === getEventFilter(p.id)).map(item => {
+                                                                    if (item.type === 'image') {
+                                                                        return (
+                                                                            <div
+                                                                                key={item.id}
+                                                                                className="aspect-video rounded-lg overflow-hidden border border-gray-800 cursor-pointer hover:border-lime-500/50 transition-all group"
+                                                                                onClick={() => openImageModal(item.url, item.caption)}
+                                                                            >
+                                                                                <img src={item.url} className="w-full h-full object-cover group-hover:scale-110 transition-transform" alt={item.caption || ''} />
+                                                                            </div>
+                                                                        );
+                                                                    }
+                                                                    if (item.type === 'video') {
+                                                                        return (
+                                                                            <div
+                                                                                key={item.id}
+                                                                                className="aspect-video rounded-lg overflow-hidden border border-gray-800 bg-[#1a1a1a] relative cursor-pointer hover:border-red-500/50 group"
+                                                                                onClick={() => window.open(item.url, '_blank')}
+                                                                            >
+                                                                                {item.thumbnail && <img src={item.thumbnail} className="w-full h-full object-cover opacity-60" />}
+                                                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                                                    <div className="w-8 h-8 rounded-full bg-red-500/80 flex items-center justify-center">
+                                                                                        <Play size={14} className="text-white ml-0.5" fill="white" />
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
+                                                                        );
+                                                                    }
+                                                                    return (
+                                                                        <div
+                                                                            key={item.id}
+                                                                            className="aspect-video rounded-lg overflow-hidden border border-gray-800 bg-[#1a1a1a] flex flex-col items-center justify-center cursor-pointer hover:border-blue-500/50"
+                                                                            onClick={() => window.open(item.url, '_blank')}
+                                                                        >
+                                                                            <Globe size={16} className="text-blue-400" />
+                                                                            <span className="text-[9px] text-gray-500 mt-1">Open Link</span>
                                                                         </div>
                                                                     );
-                                                                }
-                                                                return (
-                                                                    <div
-                                                                        key={item.id}
-                                                                        className="aspect-video rounded-lg overflow-hidden border border-gray-800 bg-[#1a1a1a] flex flex-col items-center justify-center cursor-pointer hover:border-blue-500/50"
-                                                                        onClick={() => window.open(item.url, '_blank')}
-                                                                    >
-                                                                        <Globe size={16} className="text-blue-400" />
-                                                                        <span className="text-[9px] text-gray-500 mt-1">Open Link</span>
-                                                                    </div>
-                                                                );
-                                                            })}
+                                                                })}
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>

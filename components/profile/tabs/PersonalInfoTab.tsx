@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Image as ImageIcon, ChevronDown, FileText, Trash2, Eye, Info, AlertCircle, ArrowRight, Check } from "lucide-react";
 import { FormData, Units, IdentityFile } from "../CreateProfile";
 
@@ -47,12 +47,12 @@ const InfoTooltip = ({ text }: { text: string }) => {
 };
 
 interface Props {
-  formData: FormData; handleChange: (e: any) => void; handleUnitChange: (t: any, v: any) => void;
+  formData: FormData; handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void; handleUnitChange: (t: "height" | "weight", v: string) => void;
   handleNationalityChange: (nat: string, code: string) => void;
   handleArrayChange: (field: keyof FormData, arr: string[]) => void;
-  units: Units; bmi: any; profilePic: string | null; identityFile: IdentityFile | null;
-  onPhotoUpload: (e: any) => void; onPhotoRemove: () => void; onIdentityUpload: (e: any) => void; onIdentityPreview: () => void; onPreview: () => void;
-  onNext: () => void; 
+  units: Units; bmi: { value: string; status: string; color: string }; profilePic: string | null; identityFile: IdentityFile | null;
+  onPhotoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; onPhotoRemove: () => void; onIdentityUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; onIdentityPreview: () => void; onPreview: () => void;
+  onNext: () => void;
 }
 
 const PersonalInfoTab: React.FC<Props> = ({ 
@@ -62,7 +62,7 @@ const PersonalInfoTab: React.FC<Props> = ({
   
   const currentCountry = COUNTRIES.find(c => c.nationality === formData.nationality) || COUNTRIES[0];
   const [hoverButton, setHoverButton] = useState(false);
-  const [errors, setErrors] = useState<string[]>([]);
+  // errors is now computed with useMemo below
 
   // Calculate Max Date (10 Years Ago)
   const today = new Date();
@@ -70,7 +70,7 @@ const PersonalInfoTab: React.FC<Props> = ({
   const maxDateString = maxDateObj.toISOString().split("T")[0]; // YYYY-MM-DD format
 
   // --- VALIDATION LOGIC ---
-  useEffect(() => {
+  const errors = useMemo(() => {
     const newErrors: string[] = [];
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -118,7 +118,7 @@ const PersonalInfoTab: React.FC<Props> = ({
     if (!formData.weight || parseFloat(formData.weight) <= 0) newErrors.push("Valid Weight is required");
     if (!formData.dominantHand) newErrors.push("Dominant Hand is required");
 
-    setErrors(newErrors);
+    return newErrors;
   }, [formData, identityFile, currentCountry]);
 
   const isValid = errors.length === 0;

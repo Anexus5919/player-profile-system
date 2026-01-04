@@ -1,4 +1,4 @@
-import React, { useState, KeyboardEvent, useEffect } from "react";
+import React, { useState, KeyboardEvent, useMemo } from "react";
 import { ArrowRight, ArrowLeft, Facebook, Instagram, Twitter, Linkedin, Check, X, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { FormData } from "../CreateProfile";
 
@@ -26,21 +26,21 @@ interface Props {
 const BioTab: React.FC<Props> = ({ 
   formData, handleChange, handleSocialChange, handleArrayChange, onPreview, onNext, onPrevious 
 }) => {
-  const [errors, setErrors] = useState<string[]>([]);
+  // errors is now computed with useMemo below
   const [hoverButton, setHoverButton] = useState(false);
   const [showDescriptions, setShowDescriptions] = useState(true); // Default open to show required fields
 
   // --- VALIDATION LOGIC ---
-  useEffect(() => {
+  const errors = useMemo(() => {
       const newErrors = [];
       if (!formData.bio.trim()) newErrors.push("Bio is required.");
       if (formData.languages.length === 0) newErrors.push("Select at least one language.");
-      
+
       // Mandatory Descriptions
       if (!formData.strengthDescription.trim()) newErrors.push("Strength Description is required.");
       if (!formData.weaknessDescription.trim()) newErrors.push("Weakness Description is required.");
-      
-      setErrors(newErrors);
+
+      return newErrors;
   }, [formData.bio, formData.languages, formData.strengthDescription, formData.weaknessDescription]);
 
   const isValid = errors.length === 0;

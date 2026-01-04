@@ -6,15 +6,15 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { slug: string } }
+    { params }: { params: Promise<{ slug: string }> }
 ) {
     try {
         // Robust slug extraction
         let slug;
 
         try {
-            const resolvedParams: any = await params;
-            slug = resolvedParams?.slug;
+            const resolvedParams = await params;
+            slug = resolvedParams.slug;
         } catch (e) {
             console.log("Params await failed", e);
         }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { ChevronDown, Info, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
 import { FormData } from "../CreateProfile";
 
@@ -34,12 +34,10 @@ const SportsStatsTab: React.FC<Props> = ({ formData, handleStatChange, onPreview
   const [selectedSport, setSelectedSport] = useState(availableSports[0]);
   
   const activeFields = SPORT_CONFIGS[selectedSport] || SPORT_CONFIGS["Badminton"];
-  const currentStats = formData.sportStats[selectedSport] || {}; // Access Nested Stats
-
-  const [validationMsg, setValidationMsg] = useState<{ type: 'error' | 'warning' | 'success', text: string } | null>(null);
+  const currentStats = useMemo(() => formData.sportStats[selectedSport] || {}, [formData.sportStats, selectedSport]);
 
   // Validate Logic for CURRENTLY selected sport
-  useEffect(() => {
+  const validationMsg = useMemo(() => {
     const matches = parseInt(currentStats.matchesPlayed) || 0;
     const wins = parseInt(currentStats.wins) || 0;
     const loss = parseInt(currentStats.loss) || 0;
@@ -47,13 +45,13 @@ const SportsStatsTab: React.FC<Props> = ({ formData, handleStatChange, onPreview
     const total = wins + loss + draws;
 
     if (matches > 0) {
-        if (total > matches) setValidationMsg({ type: 'error', text: `Math Error: Wins+Loss+Draws (${total}) > Matches (${matches})` });
-        else if (total < matches) setValidationMsg({ type: 'warning', text: `Note: ${matches - total} matches unaccounted for.` });
-        else setValidationMsg({ type: 'success', text: `Perfect! Math checks out.` });
+        if (total > matches) return { type: 'error' as const, text: `Math Error: Wins+Loss+Draws (${total}) > Matches (${matches})` };
+        else if (total < matches) return { type: 'warning' as const, text: `Note: ${matches - total} matches unaccounted for.` };
+        else return { type: 'success' as const, text: `Perfect! Math checks out.` };
     } else {
-        setValidationMsg(null);
+        return null;
     }
-  }, [currentStats, selectedSport]);
+  }, [currentStats]);
 
   const isNextDisabled = validationMsg?.type === 'error';
 

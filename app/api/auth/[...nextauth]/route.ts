@@ -1,10 +1,32 @@
-import NextAuth, { NextAuthOptions } from 'next-auth';
+import NextAuth from 'next-auth';
+
 import CredentialsProvider from 'next-auth/providers/credentials';
+
+interface JWTPayload {
+  id: string;
+  profileId?: string;
+}
+
+interface SessionPayload {
+  user: {
+    id: string;
+    email?: string;
+    name?: string;
+    profileId?: string;
+  };
+}
+
+interface AuthUser {
+  id: string;
+  email?: string;
+  name?: string;
+  profileId?: string;
+}
 import bcrypt from 'bcryptjs';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 
-export const authOptions: NextAuthOptions = {
+export const authOptions = {
     providers: [
         CredentialsProvider({
             name: 'Credentials',
@@ -45,17 +67,17 @@ export const authOptions: NextAuthOptions = {
         maxAge: 30 * 24 * 60 * 60, // 30 days
     },
     callbacks: {
-        async jwt({ token, user }) {
+        async jwt({ token, user }: { token: JWTPayload; user: AuthUser | undefined }) {
             if (user) {
                 token.id = user.id;
-                token.profileId = (user as any).profileId;
+                token.profileId = user.profileId;
             }
             return token;
         },
-        async session({ session, token }) {
+        async session({ session, token }: { session: SessionPayload; token: JWTPayload }) {
             if (session.user) {
-                (session.user as any).id = token.id;
-                (session.user as any).profileId = token.profileId;
+                session.user.id = token.id;
+                session.user.profileId = token.profileId;
             }
             return session;
         },
@@ -64,9 +86,10 @@ export const authOptions: NextAuthOptions = {
         signIn: '/login',
         error: '/login',
     },
-    secret: process.env.NEXTAUTH_SECRET,
+    secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-for-dev',
 };
 
-const handler = NextAuth(authOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const handler = (NextAuth as any)(authOptions);
 
 export { handler as GET, handler as POST };

@@ -6,20 +6,19 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { slug: string } }
+    { params }: { params: Promise<{ slug: string }> }
 ) {
     try {
         // In recent Next.js versions, params must be awaited or accessed carefully if it's a promise
         // However, the signature above suggests it's an object. 
         // If it is failing, we might be in a version where it IS a promise despite the type.
-        // Let's try to treat it as a potential promise or object.
-        const resolvedParams: any = await params;
-        let slug = resolvedParams?.slug;
+        const resolvedParams = await params;
+        let slug = resolvedParams.slug;
 
         // Fallback: Extract slug from URL if params failed
         if (!slug) {
             const pathname = request.nextUrl.pathname;
-            slug = pathname.split('/').pop();
+            slug = pathname.split('/').pop() || '';
             console.log("API: Extracted slug from URL:", slug);
         }
 

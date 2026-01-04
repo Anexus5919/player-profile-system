@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { X, Activity, Mail, Phone, ImageIcon, Quote, ThumbsUp, ThumbsDown, Linkedin, Facebook, Twitter, Instagram, Trophy, Calendar, MapPin, Medal, Award, Ribbon, Star, ExternalLink, ChevronDown, ChevronUp, FileText, Crown, Play, Film, Camera } from "lucide-react";
-import { FormData, Units, AchievementRecord, MediaItem } from "../CreateProfile";
+import React, { useState, useMemo } from "react";
+import { X, Activity, Mail, Phone, ImageIcon, Quote, ThumbsUp, ThumbsDown, Linkedin, Facebook, Instagram, Trophy, Calendar, MapPin, Medal, Award, Ribbon, ExternalLink, ChevronDown, FileText, Crown, Play } from "lucide-react";
+import { FormData, Units, AchievementRecord, MediaItem, ParticipationRecord } from "../CreateProfile";
 
 // --- CUSTOM INTERACTIVE SVG PIE CHART ---
 const PieChart = ({ wins, loss, draws }: { wins: number, loss: number, draws: number }) => {
@@ -220,13 +220,11 @@ const MediaGallery = ({
     items,
     filter = 'all',
     onImageClick,
-    onVideoClick,
     onDeleteMedia
 }: {
     items: MediaItem[],
     filter?: 'all' | 'image' | 'video' | 'certificate' | 'link',
     onImageClick: (url: string, caption?: string) => void,
-    onVideoClick: (url: string) => void,
     onDeleteMedia: (id: string) => void
 }) => {
     const [hoveredItemId, setHoveredItemId] = React.useState<string | null>(null);
@@ -252,7 +250,7 @@ const MediaGallery = ({
             if (url.startsWith('blob:')) {
                 // For blob URLs, copy the actual image data to clipboard
                 const response = await fetch(url);
-                const blob = await response.blob();
+                await response.blob(); // Not used, but fetch to ensure it's loaded
 
                 // Try to copy image as PNG to clipboard
                 try {
@@ -459,14 +457,12 @@ const MediaGallery = ({
 // --- MAIN PREVIEW COMPONENT ---
 interface Props {
     isOpen: boolean; onClose: () => void;
-    data: FormData; bmiData: any; image: string | null; units: Units; activeTab: string;
+    data: FormData; bmiData: { value: string; status: string; color: string }; image: string | null; units: Units; activeTab: string;
     onUpdateMedia?: (newMedia: MediaItem[]) => void;
-    onUpdateEvent?: (eventId: string, updates: Partial<any>) => void;
+    onUpdateEvent?: (eventId: string, updates: Partial<ParticipationRecord>) => void;
 }
 
 const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, units, activeTab, onUpdateMedia, onUpdateEvent }) => {
-    if (!isOpen) return null;
-
     const [selectedSport, setSelectedSport] = useState(data.sports.length > 0 ? data.sports[0] : "");
     // Accordion state for Achievements
     const [expandedAchievementId, setExpandedAchievementId] = useState<string | null>(null);
@@ -478,13 +474,41 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
     const [imageModal, setImageModal] = useState<{ isOpen: boolean; url: string; caption?: string }>({ isOpen: false, url: '', caption: '' });
     const [videoModal, setVideoModal] = useState<{ isOpen: boolean; url: string }>({ isOpen: false, url: '' });
 
+    const playerId = useMemo(() => {
+        // Generate a stable ID from player data
+        const baseString = `${data.fullName || 'unknown'}-${data.dob || 'unknown'}-${data.email || 'unknown'}`;
+        let hash = 0;
+        for (let i = 0; i < baseString.length; i++) {
+            const char = baseString.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32-bit integer
+        }
+        return Math.abs(hash).toString().slice(-8);
+    }, [data.fullName, data.dob, data.email]);
+
     // Helper to get event filter or default to 'all'
     const getEventFilter = (eventId: string) => eventFilters[eventId] || 'all';
     const setEventFilter = (eventId: string, filter: 'all' | 'image' | 'video' | 'certificate' | 'link') => {
         setEventFilters(prev => ({ ...prev, [eventId]: filter }));
     };
 
-    const calculateAge = (dob: string) => { if (!dob) return "N/A"; return Math.abs(new Date(Date.now() - new Date(dob).getTime()).getUTCFullYear() - 1970); };
+    const calculateAge = useMemo(() => {
+        return (dob: string) => {
+            if (!dob) return "N/A";
+            const today = new Date();
+            const birthDate = new Date(dob);
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+
+            return age.toString();
+        };
+    }, []);
+
+    if (!isOpen) return null;
 
     const getTitle = () => {
         switch (activeTab) {
@@ -496,10 +520,7 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
         }
     }
 
-    // Filter media
-    const images = data.media?.filter(m => m.type === 'image') || [];
-    const videos = data.media?.filter(m => m.type === 'video') || [];
-    const certs = data.media?.filter(m => m.type === 'certificate') || [];
+    // Media filtering is done in MediaGallery component
 
     // --- Helpers ---
     const getSportSpecificStats = (sport: string) => {
@@ -571,7 +592,7 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
                                         {data.media && data.media.length > 0 && (
                                             <select
                                                 value={mediaFilter}
-                                                onChange={(e) => setMediaFilter(e.target.value as any)}
+                                                onChange={(e) => setMediaFilter(e.target.value as 'all' | 'image' | 'video' | 'certificate' | 'link')}
                                                 className="bg-[#1a1a1a] text-white text-xs px-3 py-1 rounded border border-gray-700 focus:border-lime-500 outline-none"
                                             >
                                                 <option value="all">All Media</option>
@@ -584,10 +605,9 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
                                     </div>
                                     {data.playerJourney && <p className="text-gray-300 leading-relaxed italic border-l-2 border-lime-500/50 pl-4 mb-4">{data.playerJourney}</p>}
                                     <MediaGallery
-                                        items={data.media}
+                                        items={data.media || []}
                                         filter={mediaFilter}
                                         onImageClick={(url, caption) => setImageModal({ isOpen: true, url, caption })}
-                                        onVideoClick={(url) => setVideoModal({ isOpen: true, url })}
                                         onDeleteMedia={handleDeleteGeneralMedia}
                                     />
                                 </div>
@@ -610,7 +630,7 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
                                             {p.media && p.media.length > 0 && (
                                                 <select
                                                     value={getEventFilter(p.id)}
-                                                    onChange={(e) => setEventFilter(p.id, e.target.value as any)}
+                                                    onChange={(e) => setEventFilter(p.id, e.target.value as 'all' | 'image' | 'video' | 'certificate' | 'link')}
                                                     className="bg-[#1a1a1a] text-white text-xs px-2 py-1 rounded border border-gray-700 focus:border-lime-500 outline-none shrink-0"
                                                 >
                                                     <option value="all">All</option>
@@ -627,7 +647,6 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
                                             items={p.media}
                                             filter={getEventFilter(p.id)}
                                             onImageClick={(url, caption) => setImageModal({ isOpen: true, url, caption })}
-                                            onVideoClick={(url) => setVideoModal({ isOpen: true, url })}
                                             onDeleteMedia={(mediaId) => handleDeleteEventMedia(p.id, mediaId)}
                                         />}
                                     </div>
@@ -744,7 +763,7 @@ const PreviewModal: React.FC<Props> = ({ isOpen, onClose, data, bmiData, image, 
                         <div className="p-8 flex flex-col md:flex-row gap-8 relative z-10">
                             <div className="flex-shrink-0 flex flex-col items-center gap-4">
                                 <div className="w-48 h-56 rounded-xl bg-gray-800 border-2 border-lime-500/30 overflow-hidden shadow-lg relative"><div className="absolute bottom-0 left-0 w-full bg-black/90 backdrop-blur-sm py-2 text-center border-t border-lime-500/30"><span className="text-lime-500 font-bold uppercase tracking-wider text-xs block truncate px-2">{data.sports.length > 1 ? `${data.sports[0]} +${data.sports.length - 1} More` : data.sports[0] || "ATHLETE"}</span></div>{image ? <img src={image} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-gray-600"><ImageIcon size={32} /></div>}</div>
-                                <div className="flex flex-col items-center gap-1 opacity-50"><span className="text-[10px] tracking-[0.2em] text-gray-400">ID: {Date.now().toString().slice(-8)}</span></div>
+                                <div className="flex flex-col items-center gap-1 opacity-50"><span className="text-[10px] tracking-[0.2em] text-gray-400">ID: {playerId}</span></div>
                             </div>
                             <div className="flex-1 w-full"><div className="border-b border-gray-800 pb-4 mb-6"><h2 className="text-4xl font-black text-white uppercase italic tracking-tighter">{data.fullName || "PLAYER NAME"}</h2><div className="flex flex-wrap items-center gap-2 mt-3"><span className="bg-lime-500/10 text-lime-500 px-3 py-1 rounded text-xs font-bold uppercase border border-lime-500/20">{data.nationality || "Unknown"}</span>{data.sports.map(s => <span key={s} className="bg-gray-800 text-gray-300 px-2 py-1 rounded text-xs border border-gray-700 flex items-center gap-1">{s}</span>)}</div><div className="mt-2 text-gray-500 text-xs uppercase tracking-wider font-medium">• {data.gender || "N/A"} • {calculateAge(data.dob)} Years Old</div></div><div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6"><div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-800"><span className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Height</span><span className="text-xl font-bold text-white">{data.height || "-"} <span className="text-xs text-gray-600">{units.height}</span></span></div><div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-800"><span className="text-gray-500 text-[10px] uppercase font-bold block mb-1">Weight</span><span className="text-xl font-bold text-white">{data.weight || "-"} <span className="text-xs text-gray-600">{units.weight}</span></span></div><div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-800 md:col-span-2 relative overflow-hidden"><div className={`absolute right-0 top-0 h-full w-1 ${bmiData.color.replace('text-', 'bg-')}`}></div><span className="text-gray-500 text-[10px] uppercase font-bold block mb-1">BMI Index</span><div className="flex items-baseline gap-2"><span className={`text-xl font-bold ${bmiData.color}`}>{bmiData.value || "--"}</span><span className="text-xs text-gray-400">({bmiData.status})</span></div></div></div><div className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg border border-gray-800 mb-4"><div className="flex items-center gap-3"><Activity size={18} className="text-lime-500" /><span className="text-sm font-medium text-gray-300">Agility Rating</span></div><div className="flex gap-1">{[1, 2, 3, 4, 5].map(star => <div key={star} className={`h-2 w-6 rounded-full ${star <= parseInt(data.agilityRating || '0') ? 'bg-lime-500 shadow-[0_0_8px_rgba(132,204,22,0.5)]' : 'bg-gray-700'}`}></div>)}</div></div><div className="col-span-2 flex flex-wrap gap-4 text-xs text-gray-400"><span className="flex items-center gap-1.5"><Mail size={12} className="text-lime-500" /> {data.email || "No Email"}</span><span className="flex items-center gap-1.5"><Phone size={12} className="text-lime-500" /> {data.contactNo || "No Phone"}</span></div></div>
                         </div>

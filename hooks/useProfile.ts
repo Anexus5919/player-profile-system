@@ -2,11 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
-
-interface ProfileData {
-    // All form fields
-    [key: string]: any;
-}
+import { FormData } from '@/components/profile/CreateProfile';
 
 interface UseProfileReturn {
     loading: boolean;
@@ -14,8 +10,8 @@ interface UseProfileReturn {
     error: string | null;
     shareableUrl: string | null;
     hasProfile: boolean;
-    fetchProfile: () => Promise<ProfileData | null>;
-    saveProfile: (data: ProfileData) => Promise<{ success: boolean; shareableUrl?: string; error?: string }>;
+    fetchProfile: () => Promise<FormData | null>;
+    saveProfile: (data: FormData) => Promise<{ success: boolean; shareableUrl?: string; error?: string }>;
     deleteProfile: () => Promise<boolean>;
 }
 
@@ -27,7 +23,7 @@ export function useProfile(): UseProfileReturn {
     const [shareableUrl, setShareableUrl] = useState<string | null>(null);
     const [hasProfile, setHasProfile] = useState(false);
 
-    const fetchProfile = useCallback(async (): Promise<ProfileData | null> => {
+    const fetchProfile = useCallback(async (): Promise<FormData | null> => {
         if (!isAuthenticated) return null;
 
         setLoading(true);
@@ -57,7 +53,7 @@ export function useProfile(): UseProfileReturn {
         }
     }, [isAuthenticated]);
 
-    const saveProfile = useCallback(async (data: ProfileData): Promise<{ success: boolean; shareableUrl?: string; error?: string }> => {
+    const saveProfile = useCallback(async (data: FormData): Promise<{ success: boolean; shareableUrl?: string; error?: string }> => {
         if (!isAuthenticated) {
             setError('Please log in to save your profile');
             return { success: false };
@@ -83,7 +79,7 @@ export function useProfile(): UseProfileReturn {
             setShareableUrl(result.shareableUrl);
 
             return { success: true, shareableUrl: result.shareableUrl };
-        } catch (err: any) {
+        } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Failed to save profile';
             console.error("useProfile save error:", err);
             setError(message);

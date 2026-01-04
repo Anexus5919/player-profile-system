@@ -1,7 +1,7 @@
 
-const mongoose = require('mongoose');
-const fs = require('fs');
-const path = require('path');
+import mongoose from 'mongoose';
+import fs from 'fs';
+import path from 'path';
 
 const envPath = path.resolve(process.cwd(), '.env.local');
 let mongoUri = '';

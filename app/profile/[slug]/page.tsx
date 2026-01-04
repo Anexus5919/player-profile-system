@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import ProfileSummary from '@/components/profile/ProfileSummary';
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { ParticipationRecord, AchievementRecord, MediaItem, SportStatsData } from '@/components/profile/CreateProfile';
 
 interface ProfileData {
     fullName: string;
@@ -26,7 +27,7 @@ interface ProfileData {
     wingspan: string;
     agilityRating: string;
     profilePicUrl: string;
-    sportStats: Record<string, any>;
+    sportStats: Record<string, SportStatsData>;
     bio: string;
     languages: string[];
     strengths: string[];
@@ -34,9 +35,9 @@ interface ProfileData {
     weaknesses: string[];
     weaknessDescription: string;
     socialLinks: { facebook: string; instagram: string; twitter: string; linkedin: string };
-    participations: any[];
-    achievements: any[];
-    media: any[];
+    participations: ParticipationRecord[];
+    achievements: AchievementRecord[];
+    media: MediaItem[];
     playerJourney: string;
 }
 
@@ -61,7 +62,7 @@ export default function PublicProfilePage() {
                 } else {
                     setProfile(data.profile);
                 }
-            } catch (err) {
+            } catch (_err) {
                 setError('Failed to load profile');
             } finally {
                 setLoading(false);
@@ -165,7 +166,7 @@ export default function PublicProfilePage() {
             </div>
 
             <ProfileSummary
-                data={formData as any}
+                data={formData}
                 bmiData={calculateBMI()}
                 image={profile.profilePicUrl}
                 units={{ height: "cm", weight: "kg" }}

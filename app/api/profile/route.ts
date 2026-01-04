@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectDB from '@/lib/mongodb';
 import Profile from '@/models/Profile';
 import User from '@/models/User';
 
+interface AuthSession {
+  user: {
+    id: string;
+    email?: string;
+    name?: string;
+    profileId?: string;
+  };
+}
+
 // GET - Fetch current user's profile
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const session = await getServerSession(authOptions as any) as AuthSession | null;
 
         if (!session?.user) {
             return NextResponse.json(
@@ -19,7 +29,7 @@ export async function GET(request: NextRequest) {
 
         await connectDB();
 
-        const profile = await Profile.findOne({ userId: (session.user as any).id });
+        const profile = await Profile.findOne({ userId: session.user.id });
 
         if (!profile) {
             return NextResponse.json(
@@ -44,7 +54,8 @@ export async function GET(request: NextRequest) {
 // POST - Create or update profile
 export async function POST(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const session = await getServerSession(authOptions as any) as AuthSession | null;
 
         if (!session?.user) {
             return NextResponse.json(
@@ -54,7 +65,7 @@ export async function POST(request: NextRequest) {
         }
 
         const data = await request.json();
-        const userId = (session.user as any).id;
+        const userId = session.user.id;
 
         await connectDB();
 
@@ -81,19 +92,21 @@ export async function POST(request: NextRequest) {
             profile,
             shareableUrl: `/profile/${profile.shareableSlug}`,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Save profile error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to save profile';
         return NextResponse.json(
-            { error: error.message || 'Failed to save profile', details: error },
+            { error: errorMessage, details: error },
             { status: 500 }
         );
     }
 }
 
 // DELETE - Delete profile
-export async function DELETE(request: NextRequest) {
+export async function DELETE(_request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const session = await getServerSession(authOptions as any) as AuthSession | null;
 
         if (!session?.user) {
             return NextResponse.json(
@@ -102,7 +115,7 @@ export async function DELETE(request: NextRequest) {
             );
         }
 
-        const userId = (session.user as any).id;
+        const userId = session.user.id;
 
         await connectDB();
 

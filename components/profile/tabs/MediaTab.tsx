@@ -1,10 +1,23 @@
 import React, { useState, useRef } from "react";
-import { ArrowRight, ArrowLeft, Upload, X, Image as ImageIcon, Film, FileText, Play, Plus, Trash2, Trophy, Globe } from "lucide-react";
+import { ArrowRight, ArrowLeft, Upload, Image as ImageIcon, Film, FileText, Play, Plus, Trash2, Trophy, Globe } from "lucide-react";
 import { MediaItem, ParticipationRecord } from "../CreateProfile";
 import { useUpload } from "@/hooks/useUpload";
 
 const inputBaseStyle = "w-full bg-[#2C2C2C] text-gray-200 rounded-md px-3 py-2.5 outline-none focus:ring-1 focus:ring-lime-500 transition-all placeholder-gray-500 text-sm border border-transparent focus:border-lime-500/50";
 const labelStyle = "block text-[#a3a3a3] text-sm mb-1.5 font-medium";
+
+// Stable ID generator that doesn't use Math.random() during render
+const generateStableId = (content: string, type: string): string => {
+  const timestamp = Date.now().toString();
+  const baseString = `${content}-${type}-${timestamp}`;
+  let hash = 0;
+  for (let i = 0; i < baseString.length; i++) {
+    const char = baseString.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(36).substr(0, 9);
+};
 
 // Helper function to generate thumbnail based on URL type
 const getThumbnailForUrl = (url: string): string => {
@@ -50,7 +63,7 @@ interface Props {
 }
 
 const MediaTab: React.FC<Props> = ({ media, playerJourney, participations, onUpdateMedia, onUpdateJourney, onUpdateEvent, onPreview, onPrevious, onSubmit }) => {
-  const { upload, uploading, progress } = useUpload();
+  const { upload } = useUpload();
 
   // 'general' or participation ID
   const [selectedContext, setSelectedContext] = useState<string>('general');
@@ -82,7 +95,7 @@ const MediaTab: React.FC<Props> = ({ media, playerJourney, participations, onUpd
         for (const file of files) {
           const result = await upload(file, 'player-media');
           newItems.push({
-            id: result.publicId || Math.random().toString(36).substr(2, 9),
+            id: result.publicId || generateStableId(file.name, activeType),
             type: activeType,
             url: result.url,
             caption: file.name,
@@ -105,7 +118,7 @@ const MediaTab: React.FC<Props> = ({ media, playerJourney, participations, onUpd
   const addVideoLink = () => {
     if (!videoLink) return;
     const newItem: MediaItem = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: generateStableId(videoLink, 'video'),
       type: 'video',
       url: videoLink,
       caption: 'External Video',
@@ -123,7 +136,7 @@ const MediaTab: React.FC<Props> = ({ media, playerJourney, participations, onUpd
   const addLink = () => {
     if (!linkInput) return;
     const newItem: MediaItem = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: generateStableId(linkInput, 'link'),
       type: 'link',
       url: linkInput,
       caption: linkInput.includes('.pdf') ? 'Certificate PDF' : 'Drive Link',
@@ -187,7 +200,7 @@ const MediaTab: React.FC<Props> = ({ media, playerJourney, participations, onUpd
         for (const file of fileArray) {
           const result = await upload(file, 'player-media');
           newItems.push({
-            id: result.publicId || Math.random().toString(36).substr(2, 9),
+            id: result.publicId || generateStableId(file.name, activeType),
             type: activeType,
             url: result.url,
             caption: file.name,
@@ -287,7 +300,7 @@ const MediaTab: React.FC<Props> = ({ media, playerJourney, participations, onUpd
             ].map(({ type, label, icon: Icon }) => (
               <button
                 key={type}
-                onClick={() => setActiveType(type as any)}
+                onClick={() => setActiveType(type as 'image' | 'video' | 'certificate' | 'link')}
                 className={`pb-2 text-sm font-bold uppercase tracking-wide transition-colors flex items-center gap-2 ${activeType === type ? 'text-lime-500 border-b-2 border-lime-500' : 'text-gray-500 hover:text-gray-300'}`}
               >
                 <Icon size={16} />

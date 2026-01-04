@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import Image from "next/image";
 import {
-    User, Activity, FileText, Trophy, Medal, Award, Ribbon, Star,
+    User, Activity, FileText, Trophy, Medal, Award, Ribbon,
     Calendar, MapPin, Quote, ThumbsUp, ThumbsDown, Linkedin, Facebook,
-    Twitter, Instagram, Mail, Phone, Image as ImageIcon, ChevronDown,
+    Instagram, Mail, Phone, Image as ImageIcon, ChevronDown,
     ExternalLink, Crown, Play, Film, ArrowLeft, Share2, Globe, X, Link, Video
 } from "lucide-react";
-import { FormData, Units, AchievementRecord, MediaItem, ParticipationRecord } from "./CreateProfile";
+import { FormData, Units, AchievementRecord, MediaItem } from "./CreateProfile";
 
 // --- CUSTOM INTERACTIVE SVG PIE CHART (Reused from PreviewModal) ---
 const PieChart = ({ wins, loss, draws }: { wins: number, loss: number, draws: number }) => {
@@ -149,7 +150,12 @@ const MediaDisplay = ({
                     className="aspect-video rounded-lg overflow-hidden border border-gray-800 cursor-pointer hover:border-lime-500/50 transition-all hover:scale-[1.02] group"
                     onClick={() => onImageClick(img.url, img.caption)}
                 >
-                    <img src={img.url} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                    <Image
+                        src={img.url}
+                        alt={img.caption || "Image"}
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-110"
+                    />
                 </div>
             ))}
             {videos.map(vid => (
@@ -158,7 +164,12 @@ const MediaDisplay = ({
                     className="aspect-video rounded-lg overflow-hidden border border-gray-800 bg-[#1a1a1a] flex items-center justify-center relative cursor-pointer hover:border-red-500/50 transition-colors group"
                     onClick={() => handleVideoClick(vid.url)}
                 >
-                    {vid.thumbnail ? <img src={vid.thumbnail} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" /> : null}
+                    {vid.thumbnail ? <Image
+                        src={vid.thumbnail}
+                        alt={vid.caption || "Video thumbnail"}
+                        fill
+                        className="object-cover opacity-60 group-hover:opacity-80 transition-opacity"
+                    /> : null}
                     <div className="absolute inset-0 flex items-center justify-center">
                         <div className="w-10 h-10 rounded-full bg-red-500/80 flex items-center justify-center group-hover:scale-110 transition-transform">
                             <Play size={18} className="text-white ml-0.5" fill="white" />
@@ -219,6 +230,18 @@ interface Props {
 
 const ProfileSummary: React.FC<Props> = ({ data, bmiData, image, units, onEdit, isPublicView = false }) => {
     const [expandedAchievementId, setExpandedAchievementId] = useState<string | null>(null);
+
+    const playerId = useMemo(() => {
+        // Generate a stable ID from player data
+        const baseString = `${data.fullName || 'unknown'}-${data.dob || 'unknown'}-${data.email || 'unknown'}`;
+        let hash = 0;
+        for (let i = 0; i < baseString.length; i++) {
+            const char = baseString.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32-bit integer
+        }
+        return Math.abs(hash).toString().slice(-8);
+    }, [data.fullName, data.dob, data.email]);
     const [selectedSport, setSelectedSport] = useState(data.sports.length > 0 ? data.sports[0] : "");
     const [imageModal, setImageModal] = useState<{ isOpen: boolean; url: string; caption?: string }>({ isOpen: false, url: '', caption: '' });
     const [mediaFilter, setMediaFilter] = useState<'all' | 'image' | 'video' | 'link' | 'certificate'>('all');
@@ -258,7 +281,21 @@ const ProfileSummary: React.FC<Props> = ({ data, bmiData, image, units, onEdit, 
         setImageModal({ isOpen: false, url: '', caption: '' });
     };
 
-    const calculateAge = (dob: string) => { if (!dob) return "N/A"; return Math.abs(new Date(Date.now() - new Date(dob).getTime()).getUTCFullYear() - 1970); };
+    const calculateAge = useMemo(() => {
+        return (dob: string) => {
+            if (!dob) return "N/A";
+            const today = new Date();
+            const birthDate = new Date(dob);
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+
+            return age.toString();
+        };
+    }, []);
 
     const getResultIcon = (result: string) => {
         switch (result) {
@@ -306,7 +343,7 @@ const ProfileSummary: React.FC<Props> = ({ data, bmiData, image, units, onEdit, 
                                 </div>
                                 {image ? <img src={image} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-gray-600"><ImageIcon size={32} /></div>}
                             </div>
-                            <span className="text-[10px] tracking-[0.2em] text-gray-500 opacity-50">ID: {Date.now().toString().slice(-8)}</span>
+                            <span className="text-[10px] tracking-[0.2em] text-gray-500 opacity-50">ID: {playerId}</span>
                         </div>
                         <div className="flex-1">
                             <div className="border-b border-gray-800 pb-3 mb-4">

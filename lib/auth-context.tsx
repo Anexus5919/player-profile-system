@@ -4,15 +4,17 @@ import { SessionProvider, useSession, signOut } from "next-auth/react"
 import { createContext, useContext, ReactNode } from "react"
 import { useRouter } from "next/navigation"
 
+interface ExtendedUser {
+  id: string;
+  email?: string;
+  name?: string;
+  profileId?: string;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean
   isLoading: boolean
-  user: {
-    id?: string
-    email?: string
-    name?: string
-    profileId?: string
-  } | null
+  user: ExtendedUser | null
   logout: () => Promise<void>
 }
 
@@ -24,11 +26,11 @@ function AuthContextProvider({ children }: { children: ReactNode }) {
 
   const isLoading = status === "loading"
   const isAuthenticated = status === "authenticated"
-  const user = session?.user ? {
-    id: (session.user as any).id,
+  const user: ExtendedUser | null = session?.user ? {
+    id: (session.user as ExtendedUser).id,
     email: session.user.email || undefined,
     name: session.user.name || undefined,
-    profileId: (session.user as any).profileId,
+    profileId: (session.user as ExtendedUser).profileId,
   } : null
 
   const logout = async () => {

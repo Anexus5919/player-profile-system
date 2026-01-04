@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, ChangeEvent, useEffect } from "react";
+import React, { useState, ChangeEvent, useMemo, useEffect } from "react";
 import ProfileHeader from "./ProfileHeader";
 import ProfileFooter from "./ProfileFooter";
 import PersonalInfoTab from "./tabs/PersonalInfoTab";
@@ -14,8 +14,6 @@ import IdentityModal from "./modals/IdentityModal";
 import ProfileSummary from "./ProfileSummary";
 import { useProfile } from "@/hooks/useProfile";
 import { useUpload } from "@/hooks/useUpload";
-import { uploadToCloudinary } from "@/lib/cloudinary"; // We might need this or just use the hook
-import { Loader2 } from "lucide-react";
 
 // --- Shared Types ---
 export interface SportStatsData {
@@ -73,6 +71,7 @@ export interface FormData {
   playerJourney: string;
 
   // Identity & Meta
+  profilePicUrl?: string;
   identityFileUrl?: string;
   identityFileName?: string;
   identityFilePublicId?: string;
@@ -106,9 +105,23 @@ const CreateProfile = () => {
 
   const [formData, setFormData] = useState<FormData>(getDefaultFormData());
   const [units, setUnits] = useState<Units>({ height: "cm", weight: "kg" });
-  const [bmi, setBmi] = useState({ value: "", status: "", color: "text-gray-500" });
+  // BMI computed from form data and units
+  const bmi = useMemo(() => {
+    const h = parseFloat(formData.height); const w = parseFloat(formData.weight);
+    if (h > 0 && w > 0) {
+      const hM = units.height === "cm" ? h / 100 : h * 0.3048;
+      const wKg = units.weight === "kg" ? w : w * 0.453592;
+      const bmiVal = parseFloat((wKg / (hM * hM)).toFixed(1));
+      let s = "Normal", c = "text-lime-500";
+      if (bmiVal < 18.5) { s = "Underweight"; c = "text-red-500"; }
+      else if (bmiVal >= 25 && bmiVal < 30) { s = "Overweight"; c = "text-yellow-500"; }
+      else if (bmiVal >= 30) { s = "Obesity"; c = "text-red-500"; }
+      return { value: bmiVal.toString(), status: s, color: c };
+    } else {
+      return { value: "", status: "", color: "text-gray-500" };
+    }
+  }, [formData.height, formData.weight, units]);
   const [profilePic, setProfilePic] = useState<string | null>(null);
-  const [profilePicPublicId, setProfilePicPublicId] = useState<string | null>(null);
   const [identityFile, setIdentityFile] = useState<IdentityFile | null>(null);
   const [modals, setModals] = useState({ preview: false, identity: false });
   const [showSummary, setShowSummary] = useState(false);
@@ -119,48 +132,48 @@ const CreateProfile = () => {
   useEffect(() => {
     const loadData = async () => {
       setInitialLoading(true);
-      let dbProfile: any = null;
+      let dbProfile: FormData | null = null;
 
       // 1. Try to fetch from DB
       try {
         dbProfile = await fetchProfile();
 
         if (dbProfile) {
+          const profile = dbProfile; // Non-null assertion through assignment
           setFormData(prev => ({
             ...getDefaultFormData(),
             ...prev,
-            ...dbProfile,
+            ...profile,
             // Ensure arrays are initialized
-            sports: dbProfile.sports || [],
-            languages: dbProfile.languages || [],
-            strengths: dbProfile.strengths || [],
-            weaknesses: dbProfile.weaknesses || [],
-            media: dbProfile.media || [],
-            participations: dbProfile.participations || [],
-            achievements: dbProfile.achievements || [],
+            sports: profile.sports || [],
+            languages: profile.languages || [],
+            strengths: profile.strengths || [],
+            weaknesses: profile.weaknesses || [],
+            media: profile.media || [],
+            participations: profile.participations || [],
+            achievements: profile.achievements || [],
           }));
 
           setUnits({
-            height: dbProfile.height && dbProfile.height.includes('ft') ? 'ft' : 'cm',
-            weight: dbProfile.weight && dbProfile.weight.includes('lbs') ? 'lbs' : 'kg'
+            height: profile.height && profile.height.includes('ft') ? 'ft' : 'cm',
+            weight: profile.weight && profile.weight.includes('lbs') ? 'lbs' : 'kg'
           });
 
-          if (dbProfile.profilePicUrl) {
-            setProfilePic(dbProfile.profilePicUrl);
-            setProfilePicPublicId(dbProfile.profilePicPublicId);
+          if (profile.profilePicUrl) {
+            setProfilePic(profile.profilePicUrl);
           }
 
-          if (dbProfile.identityFileUrl) {
+          if (profile.identityFileUrl) {
             setIdentityFile({
-              name: dbProfile.identityFileName || 'Identity Proof',
-              url: dbProfile.identityFileUrl,
+              name: profile.identityFileName || 'Identity Proof',
+              url: profile.identityFileUrl,
               type: 'application/pdf',
-              publicId: dbProfile.identityFilePublicId
+              publicId: profile.identityFilePublicId
             });
           }
 
           // Ensure completed status if shareable slug exists
-          if (dbProfile.shareableSlug) {
+          if (profile.shareableSlug) {
             setProfileCompleted(true);
             setShowSummary(true);
           }
@@ -196,7 +209,6 @@ const CreateProfile = () => {
               if (tabIndex > 0) setFurthestStep(tabIndex);
             }
             if (draftData.profilePicUrl) setProfilePic(draftData.profilePicUrl);
-            if (draftData.profilePicPublicId) setProfilePicPublicId(draftData.profilePicPublicId);
 
             if (draftData.identityFileUrl) {
               setIdentityFile({
@@ -270,24 +282,6 @@ const CreateProfile = () => {
     }
   };
 
-  // Handle starting fresh (clearing everything)
-  const handleStartFresh = () => {
-    if (confirm("Are you sure? This will clear your current progress.")) {
-      // Reset state
-      setFormData(getDefaultFormData());
-      setUnits({ height: "cm", weight: "kg" });
-      setProfilePic(null);
-      setProfilePicPublicId(null);
-      setIdentityFile(null);
-      setProfileCompleted(false);
-      setShowSummary(false);
-      setActiveTab("PERSONAL INFO");
-      setFurthestStep(0);
-
-      // Clear draft
-      localStorage.removeItem(PLAYER_PROFILE_DRAFT_KEY);
-    }
-  };
 
   // --- Handlers ---
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -363,16 +357,6 @@ const CreateProfile = () => {
     if (targetIndex <= furthestStep) { setActiveTab(tab); }
   };
 
-  useEffect(() => {
-    const h = parseFloat(formData.height); const w = parseFloat(formData.weight);
-    if (h > 0 && w > 0) {
-      let hM = units.height === "cm" ? h / 100 : h * 0.3048; let wKg = units.weight === "kg" ? w : w * 0.453592;
-      const bmiVal = parseFloat((wKg / (hM * hM)).toFixed(1));
-      let s = "Normal", c = "text-lime-500";
-      if (bmiVal < 18.5) { s = "Underweight"; c = "text-red-500"; } else if (bmiVal >= 25 && bmiVal < 30) { s = "Overweight"; c = "text-yellow-500"; } else if (bmiVal >= 30) { s = "Obesity"; c = "text-red-500"; }
-      setBmi({ value: bmiVal.toString(), status: s, color: c });
-    } else { setBmi({ value: "", status: "", color: "text-gray-500" }); }
-  }, [formData.height, formData.weight, units]);
 
   const handleFile = async (e: ChangeEvent<HTMLInputElement>, type: 'photo' | 'identity') => {
     if (e.target.files?.[0]) {
@@ -384,7 +368,6 @@ const CreateProfile = () => {
 
         if (type === 'photo') {
           setProfilePic(result.url);
-          setProfilePicPublicId(result.publicId);
           setFormData(prev => ({
             ...prev,
             profilePicUrl: result.url,
